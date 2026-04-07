@@ -116,6 +116,7 @@ export class MockDataGenerator {
         agent_name: agent.name,
         agent_id: agent.id,
         title,
+        description: `Testing optimization approach: ${title}`,
         strategy_tag: STRATEGY_TAGS[Math.floor(Math.random() * STRATEGY_TAGS.length)],
         parent_hypothesis_id: this.totalHypotheses > 3 && Math.random() > 0.5
           ? `hyp-${Math.floor(Math.random() * this.totalHypotheses)}`

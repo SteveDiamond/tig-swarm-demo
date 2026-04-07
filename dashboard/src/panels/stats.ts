@@ -1,5 +1,6 @@
 import type { Panel, WSMessage } from "../types";
 import { counterTween, pulseGlow } from "../lib/animate";
+import { toggleMute, isMuted } from "../lib/sounds";
 
 export class StatsPanel implements Panel {
   private agentsEl!: HTMLElement;
@@ -15,6 +16,8 @@ export class StatsPanel implements Panel {
           <span class="stats-diamond">&#9670;</span>
           <span class="stats-title">Automated Discovery</span>
           <span id="ws-status" class="ws-status connected">LIVE</span>
+          <a href="/ideas.html" class="stats-nav-link">Ideas &rarr;</a>
+          <button class="stats-mute-btn" id="mute-btn" title="Toggle sound">&#9835;</button>
         </div>
         <div class="stats-chips">
           <div class="stat-chip" id="stat-agents">
@@ -43,6 +46,11 @@ export class StatsPanel implements Panel {
     this.hypothesesEl = document.getElementById("stat-hypotheses-val")!;
     this.improvementEl = document.getElementById("stat-improvement-val")!;
     this.heroEl = document.getElementById("stat-hero")!;
+
+    document.getElementById("mute-btn")!.addEventListener("click", () => {
+      const m = toggleMute();
+      document.getElementById("mute-btn")!.classList.toggle("muted", m);
+    });
   }
 
   handleMessage(msg: WSMessage) {

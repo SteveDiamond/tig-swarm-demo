@@ -4,14 +4,15 @@ import logging
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 from models import (
     RegisterRequest, HeartbeatRequest, HypothesisCreate, ExperimentCreate,
-    AdminBroadcast, AdminAuth, AgentResponse, HypothesisResponse, DuplicateResponse,
+    AdminBroadcast, AdminAuth, MessageCreate, KnowledgeUpdate,
+    AgentResponse, HypothesisResponse, DuplicateResponse,
     ExperimentResponse, new_id, improvement_pct,
 )
 from names import generate_agent_name, load_used_names
@@ -102,9 +103,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-dashboard_dir = Path(__file__).parent.parent / "dashboard" / "dist"
-if dashboard_dir.exists():
-    app.mount("/dashboard", StaticFiles(directory=str(dashboard_dir), html=True), name="dashboard")
+# Static dashboard mounted after all routes (see bottom of file)
 
 
 def now() -> str:
@@ -121,12 +120,6 @@ async def periodic_stats():
             baseline = get_baseline(config)
             async with db.connect() as conn:
                 best = await db.get_global_best(conn)
-                cursor = await conn.execute(
-                    "SELECT COUNT(*) as agents FROM agents WHERE status != 'offline',"
-                    " (SELECT COUNT(*) FROM experiments) as experiments,"
-                    " (SELECT COUNT(*) FROM hypotheses) as hypotheses"
-                )
-                # SQLite doesn't support multi-table in one SELECT easily, use separate queries
                 active = await db.get_agent_count(conn, active_only=True)
                 total_exp = (await (await conn.execute("SELECT COUNT(*) as c FROM experiments")).fetchone())["c"]
                 total_hyp = (await (await conn.execute("SELECT COUNT(*) as c FROM hypotheses")).fetchone())["c"]
@@ -260,17 +253,21 @@ async def get_state():
         ],
         "active_hypotheses": [
             {"id": h["id"], "title": h["title"], "strategy_tag": h["strategy_tag"],
-             "status": h["status"], "agent_name": h["agent_name"]}
+             "status": h["status"], "agent_name": h["agent_name"],
+             "description": h["description"], "parent_hypothesis_id": h.get("parent_hypothesis_id"),
+             "agent_id": h["agent_id"]}
             for h in active_hypotheses
         ],
         "failed_hypotheses": [
             {"id": h["id"], "title": h["title"], "strategy_tag": h["strategy_tag"],
-             "agent_name": h["agent_name"], "description": h["description"]}
+             "agent_name": h["agent_name"], "description": h["description"],
+             "parent_hypothesis_id": h.get("parent_hypothesis_id"), "agent_id": h.get("agent_id", "")}
             for h in failed_hypotheses
         ],
         "succeeded_hypotheses": [
             {"id": h["id"], "title": h["title"], "strategy_tag": h["strategy_tag"],
-             "agent_name": h["agent_name"], "description": h["description"]}
+             "agent_name": h["agent_name"], "description": h["description"],
+             "parent_hypothesis_id": h.get("parent_hypothesis_id"), "agent_id": h.get("agent_id", "")}
             for h in succeeded_hypotheses
         ],
         "leaderboard": leaderboard,
@@ -326,6 +323,7 @@ async def create_hypothesis(req: HypothesisCreate):
         "agent_name": agent_name,
         "agent_id": req.agent_id,
         "title": req.title,
+        "description": req.description,
         "strategy_tag": req.strategy_tag,
         "parent_hypothesis_id": req.parent_hypothesis_id,
         "timestamp": timestamp,
@@ -383,8 +381,16 @@ async def create_experiment(req: ExperimentCreate):
                 (req.score, req.score, req.agent_id),
             )
 
+        agent_name = await get_agent_name(conn, req.agent_id)
+
         prev_best = await db.get_global_best(conn)
         is_new_best = req.feasible and (prev_best is None or req.score < prev_best["score"])
+
+        if is_new_best:
+            await conn.execute(
+                "INSERT INTO best_history (experiment_id, agent_name, score, route_data, created_at) VALUES (?, ?, ?, ?, ?)",
+                (exp_id, agent_name, req.score, route_data_json, timestamp),
+            )
 
         hyp_status = None
         if req.hypothesis_id:
@@ -395,12 +401,19 @@ async def create_experiment(req: ExperimentCreate):
             )
 
         await conn.commit()
-
-        agent_name = await get_agent_name(conn, req.agent_id)
         leaderboard = await db.compute_leaderboard(conn, baseline)
         rank = next((e["rank"] for e in leaderboard if e["agent_id"] == req.agent_id), 0)
 
     imp = improvement_pct(baseline, req.score)
+
+    if hyp_status and req.hypothesis_id:
+        await manager.broadcast({
+            "type": "hypothesis_status_changed",
+            "hypothesis_id": req.hypothesis_id,
+            "new_status": hyp_status,
+            "agent_name": agent_name,
+            "timestamp": timestamp,
+        })
 
     await manager.broadcast({
         "type": "experiment_published",
@@ -454,6 +467,96 @@ async def get_leaderboard():
     return {"updated_at": now(), "baseline_score": baseline, "entries": leaderboard}
 
 
+# ── Messages (chat feed) ──
+
+@app.post("/api/messages")
+async def create_message(req: MessageCreate):
+    msg_id = new_id()
+    timestamp = now()
+    async with db.connect() as conn:
+        await conn.execute(
+            "INSERT INTO messages (id, agent_id, agent_name, content, msg_type, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (msg_id, req.agent_id, req.agent_name, req.content, req.msg_type, timestamp),
+        )
+        await conn.commit()
+
+    await manager.broadcast({
+        "type": "chat_message",
+        "message_id": msg_id,
+        "agent_name": req.agent_name,
+        "agent_id": req.agent_id,
+        "content": req.content,
+        "msg_type": req.msg_type,
+        "timestamp": timestamp,
+    })
+
+    return {"message_id": msg_id, "timestamp": timestamp}
+
+
+@app.get("/api/messages")
+async def list_messages(limit: int = 50):
+    async with db.connect() as conn:
+        cursor = await conn.execute(
+            "SELECT * FROM messages ORDER BY created_at DESC LIMIT ?", (limit,)
+        )
+        rows = [dict(row) for row in await cursor.fetchall()]
+    return rows
+
+
+# ── Knowledge (curator's living document) ──
+
+@app.put("/api/knowledge")
+async def update_knowledge(req: KnowledgeUpdate):
+    timestamp = now()
+    async with db.connect() as conn:
+        await conn.execute(
+            """INSERT INTO knowledge (id, content, updated_at, updated_by) VALUES (1, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET content = ?, updated_at = ?, updated_by = ?""",
+            (req.content, timestamp, req.updated_by, req.content, timestamp, req.updated_by),
+        )
+        await conn.commit()
+
+    await manager.broadcast({
+        "type": "knowledge_updated",
+        "content": req.content,
+        "updated_by": req.updated_by,
+        "timestamp": timestamp,
+    })
+
+    return {"updated_at": timestamp}
+
+
+@app.get("/api/knowledge")
+async def get_knowledge():
+    async with db.connect() as conn:
+        cursor = await conn.execute("SELECT * FROM knowledge WHERE id = 1")
+        row = await cursor.fetchone()
+    if row:
+        return {"content": row["content"], "updated_at": row["updated_at"], "updated_by": row["updated_by"]}
+    return {"content": "", "updated_at": "", "updated_by": ""}
+
+
+# ── Replay ──
+
+@app.get("/api/replay")
+async def get_replay():
+    async with db.connect() as conn:
+        cursor = await conn.execute(
+            "SELECT * FROM best_history ORDER BY created_at ASC"
+        )
+        rows = [dict(row) for row in await cursor.fetchall()]
+    return [
+        {
+            "experiment_id": r["experiment_id"],
+            "agent_name": r["agent_name"],
+            "score": r["score"],
+            "route_data": json.loads(r["route_data"]) if r["route_data"] else None,
+            "created_at": r["created_at"],
+        }
+        for r in rows
+    ]
+
+
 # ── Admin endpoints ──
 
 @app.post("/api/admin/broadcast")
@@ -475,6 +578,8 @@ async def admin_reset(req: AdminAuth):
         await conn.execute("DELETE FROM experiments")
         await conn.execute("DELETE FROM hypotheses")
         await conn.execute("DELETE FROM agents")
+        await conn.execute("DELETE FROM messages")
+        await conn.execute("DELETE FROM knowledge WHERE id = 1")
         await conn.commit()
     await manager.broadcast({"type": "reset", "timestamp": now()})
     return {"reset": True}
@@ -512,3 +617,9 @@ async def websocket_endpoint(ws: WebSocket):
 @app.get("/health")
 async def health():
     return {"status": "ok", "timestamp": now()}
+
+
+# ── Serve dashboard static files (must be last, catches all unmatched routes) ──
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")

@@ -3,6 +3,12 @@ import { initParticles } from "./lib/particles";
 import { SwarmWebSocket } from "./lib/websocket";
 import { MockDataGenerator } from "./mock";
 import { viewportFlash } from "./lib/animate";
+import {
+  soundAgentJoined, soundHypothesisProposed, soundExperimentPublished,
+  soundNewGlobalBest, startHeartbeat,
+} from "./lib/sounds";
+import { initQROverlay, toggleQR } from "./lib/qrcode";
+import { startReplay } from "./lib/replay";
 
 import { StatsPanel } from "./panels/stats";
 import { RoutesPanel } from "./panels/routes";
@@ -16,7 +22,8 @@ import type { WSMessage, Panel } from "./types";
 // ── Config ──
 const params = new URLSearchParams(window.location.search);
 const isMock = params.has("mock");
-const wsUrl = params.get("ws") || `ws://${window.location.hostname}:8080/ws/dashboard`;
+const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+const wsUrl = params.get("ws") || `${wsProtocol}//${window.location.host}/ws/dashboard`;
 
 // Derive REST API URL from WS URL
 function getApiUrl(): string {
@@ -52,10 +59,21 @@ initPanel(FeedPanel, "panel-feed");
 initPanel(LeaderboardPanel, "panel-leaderboard");
 
 // ── Message dispatch ──
+let soundEnabled = false; // disabled during initial state hydration
+
 function handleMessage(msg: WSMessage) {
+  if (soundEnabled) {
+    if (msg.type === "agent_joined") soundAgentJoined();
+    if (msg.type === "hypothesis_proposed") soundHypothesisProposed(msg.strategy_tag);
+    if (msg.type === "experiment_published") soundExperimentPublished();
+    if (msg.type === "new_global_best") soundNewGlobalBest();
+    if (msg.type === "stats_update") startHeartbeat(msg.active_agents);
+  }
+
   if (msg.type === "new_global_best") {
     viewportFlash("rgba(0, 229, 255, 0.03)", 150);
   }
+
   panels.forEach((panel) => panel.handleMessage(msg));
 }
 
@@ -131,12 +149,14 @@ async function loadInitialState(apiUrl: string) {
         agent_name: hyp.agent_name,
         agent_id: "",
         title: hyp.title,
+        description: hyp.description || "",
         strategy_tag: hyp.strategy_tag,
-        parent_hypothesis_id: null,
+        parent_hypothesis_id: hyp.parent_hypothesis_id || null,
         timestamp: new Date().toISOString(),
       });
     }
 
+    soundEnabled = true;
     console.log("[Dashboard] Loaded initial state:", {
       agents: state.active_agents,
       experiments: state.recent_experiments?.length,
@@ -147,9 +167,20 @@ async function loadInitialState(apiUrl: string) {
   }
 }
 
+// ── QR overlay ──
+initQROverlay();
+
+// ── Keyboard navigation ──
+document.addEventListener("keydown", (e) => {
+  if (e.key === "2") window.location.href = "/ideas.html";
+  if (e.key === "q" || e.key === "Q") toggleQR();
+  if (e.key === "r" || e.key === "R") startReplay(getApiUrl(), handleMessage);
+});
+
 // ── Connect ──
 if (isMock) {
   console.log("[Dashboard] Running in MOCK mode");
+  soundEnabled = true;
   const mock = new MockDataGenerator();
   mock.onMessage(handleMessage);
   mock.start();
@@ -163,10 +194,8 @@ if (isMock) {
   const apiUrl = getApiUrl();
   console.log(`[Dashboard] Connecting to ${wsUrl}, API: ${apiUrl}`);
 
-  // Load existing state after panels have laid out
   setTimeout(() => loadInitialState(apiUrl), 500);
 
-  // Then connect WebSocket for live updates
   const ws = new SwarmWebSocket(wsUrl);
   ws.onMessage(handleMessage);
   ws.connect();

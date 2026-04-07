@@ -2,7 +2,10 @@ import aiosqlite
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "swarm.db"
+import os
+# Use /data for Railway persistent volume, fallback to local for dev
+_data_dir = Path(os.environ.get("DATA_DIR", str(Path(__file__).parent)))
+DB_PATH = _data_dir / "swarm.db"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS agents (
@@ -50,10 +53,36 @@ CREATE TABLE IF NOT EXISTS config (
     value TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS messages (
+    id TEXT PRIMARY KEY,
+    agent_id TEXT,
+    agent_name TEXT NOT NULL,
+    content TEXT NOT NULL,
+    msg_type TEXT DEFAULT 'agent',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS knowledge (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    content TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL,
+    updated_by TEXT DEFAULT ''
+);
+
 CREATE INDEX IF NOT EXISTS idx_exp_feasible_score ON experiments(feasible, score);
 CREATE INDEX IF NOT EXISTS idx_exp_agent ON experiments(agent_id);
 CREATE INDEX IF NOT EXISTS idx_hyp_status ON hypotheses(status);
 CREATE INDEX IF NOT EXISTS idx_hyp_fingerprint ON hypotheses(fingerprint);
+CREATE TABLE IF NOT EXISTS best_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    experiment_id TEXT NOT NULL,
+    agent_name TEXT NOT NULL,
+    score REAL NOT NULL,
+    route_data TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_msg_created ON messages(created_at);
 """
 
 DEFAULT_CONFIG = {

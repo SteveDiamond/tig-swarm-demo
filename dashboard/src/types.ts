@@ -29,10 +29,13 @@ export type WSMessage =
   | AgentJoined
   | AgentOffline
   | HypothesisProposed
+  | HypothesisStatusChanged
   | ExperimentPublished
   | NewGlobalBest
   | LeaderboardUpdate
   | StatsUpdate
+  | ChatMessage
+  | KnowledgeUpdated
   | AdminBroadcastMsg
   | ResetMsg;
 
@@ -56,8 +59,17 @@ export interface HypothesisProposed {
   agent_name: string;
   agent_id: string;
   title: string;
+  description: string;
   strategy_tag: string;
   parent_hypothesis_id: string | null;
+  timestamp: string;
+}
+
+export interface HypothesisStatusChanged {
+  type: "hypothesis_status_changed";
+  hypothesis_id: string;
+  new_status: string;
+  agent_name: string;
   timestamp: string;
 }
 
@@ -100,6 +112,23 @@ export interface StatsUpdate {
   best_score: number | null;
   baseline_score: number;
   improvement_pct: number;
+  timestamp: string;
+}
+
+export interface ChatMessage {
+  type: "chat_message";
+  message_id: string;
+  agent_name: string;
+  agent_id: string | null;
+  content: string;
+  msg_type: "agent" | "synthesis" | "milestone";
+  timestamp: string;
+}
+
+export interface KnowledgeUpdated {
+  type: "knowledge_updated";
+  content: string;
+  updated_by: string;
   timestamp: string;
 }
 
