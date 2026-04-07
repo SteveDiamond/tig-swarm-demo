@@ -1,0 +1,6 @@
+{
+    "seed": "demo",
+    "n_nodes=50": 5,
+    "n_nodes=75": 5,
+    "n_nodes=100": 5
+}

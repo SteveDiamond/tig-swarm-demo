@@ -10,3 +10,4 @@ fly.toml
 Procfile
 runtime.txt
 Dockerfile.bak
+server/static/
