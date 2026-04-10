@@ -91,6 +91,19 @@ export class IdeaFlowPanel implements Panel {
   }
 
   handleMessage(msg: WSMessage) {
+    if (msg.type === "reset") {
+      this.nodes = [];
+      this.links = [];
+      this.hypothesisOwner.clear();
+      this.linkGroup.selectAll("*").remove();
+      this.nodeGroup.selectAll("*").remove();
+      this.labelGroup.selectAll("*").remove();
+      this.simulation.nodes([]);
+      (this.simulation.force("link") as d3.ForceLink<AgentNode, IdeaLink>).links([]);
+      this.simulation.alpha(0).stop();
+      return;
+    }
+
     if (msg.type === "agent_joined") {
       this.addAgent(msg.agent_id, msg.agent_name);
     }

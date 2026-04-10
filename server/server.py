@@ -380,6 +380,12 @@ async def create_experiment(req: ExperimentCreate):
     route_data_json = json.dumps(req.route_data) if req.route_data else None
 
     async with db.connect() as conn:
+        # Capture the previous global best BEFORE inserting this experiment,
+        # otherwise `get_global_best` returns the row we just wrote and the
+        # first-ever experiment is never flagged as a new best.
+        prev_best = await db.get_global_best(conn)
+        is_new_best = req.feasible and (prev_best is None or req.score < prev_best["score"])
+
         await conn.execute(
             """INSERT INTO experiments
                (id, agent_id, hypothesis_id, algorithm_code, score, feasible,
@@ -402,9 +408,6 @@ async def create_experiment(req: ExperimentCreate):
             )
 
         agent_name = await get_agent_name(conn, req.agent_id)
-
-        prev_best = await db.get_global_best(conn)
-        is_new_best = req.feasible and (prev_best is None or req.score < prev_best["score"])
         # Semantic % improvement vs the previous global best (lower is
         # better, so positive = score dropped = improvement; negative =
         # score rose = regression). None when there is no previous best.

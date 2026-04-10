@@ -51,6 +51,12 @@ export class LeaderboardPanel implements Panel {
   }
 
   handleMessage(msg: WSMessage) {
+    if (msg.type === "reset") {
+      this.currentEntries = [];
+      this.list.innerHTML = "";
+      return;
+    }
+
     if (msg.type !== "leaderboard_update") return;
     this.currentEntries = msg.entries.slice();
     this.render();

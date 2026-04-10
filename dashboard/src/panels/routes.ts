@@ -197,6 +197,24 @@ export class RoutesPanel implements Panel {
   }
 
   handleMessage(msg: WSMessage) {
+    if (msg.type === "reset") {
+      this.allInstances = {};
+      this.currentRouteData = null;
+      this.currentIndex = 0;
+      this.rawScore = null;
+      this.viewSide = 1000;
+      this.routeGroup.selectAll("*").remove();
+      this.customerGroup.selectAll("*").remove();
+      this.depotGroup.selectAll("*").remove();
+      this.svg.attr("viewBox", "0 0 1000 1000");
+      this.scoreEl.textContent = "---";
+      this.scoreDeltaEl.textContent = "";
+      this.routeDistanceEl.textContent = "---";
+      this.navEl.style.display = "none";
+      this.instanceLabelEl.textContent = "";
+      return;
+    }
+
     if (msg.type === "stats_update") {
       if (msg.num_instances) this.numInstances = msg.num_instances;
       // Show score even before any route data has arrived. Once route data

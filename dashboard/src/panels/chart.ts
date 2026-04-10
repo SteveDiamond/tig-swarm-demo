@@ -65,6 +65,13 @@ export class ChartPanel implements Panel {
   }
 
   handleMessage(msg: WSMessage) {
+    if (msg.type === "reset") {
+      this.data = [];
+      this.startTime = 0;
+      this.g.selectAll("*").remove();
+      return;
+    }
+
     if (msg.type === "stats_update" && msg.baseline_score) {
       this.baseline = msg.baseline_score;
     }

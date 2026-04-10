@@ -27,6 +27,13 @@ export class FeedPanel implements Panel {
   }
 
   handleMessage(msg: WSMessage) {
+    if (msg.type === "reset") {
+      this.items.forEach((el) => el.remove());
+      this.items = [];
+      this.list.innerHTML = "";
+      return;
+    }
+
     let text = "";
     let eventType = "";
 

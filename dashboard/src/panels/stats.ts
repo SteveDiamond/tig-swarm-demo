@@ -54,6 +54,17 @@ export class StatsPanel implements Panel {
   }
 
   handleMessage(msg: WSMessage) {
+    if (msg.type === "reset") {
+      this.agentsEl.textContent = "0";
+      this.experimentsEl.textContent = "0";
+      this.hypothesesEl.textContent = "0";
+      this.improvementEl.textContent = "0%";
+      this.improvementEl.style.color = "";
+      this.heroEl.textContent = "";
+      this.heroEl.style.opacity = "0";
+      return;
+    }
+
     if (msg.type === "stats_update") {
       counterTween(this.agentsEl, msg.active_agents);
       counterTween(this.experimentsEl, msg.total_experiments);

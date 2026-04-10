@@ -65,6 +65,25 @@ export class IdeasTree {
   }
 
   handleMessage(msg: WSMessage) {
+    if (msg.type === "reset") {
+      this.feedItems.forEach((el) => el.remove());
+      this.feedItems = [];
+      this.feedEl.innerHTML = "";
+      this.hypothesisCount = 0;
+      this.succeededCount = 0;
+      this.failedCount = 0;
+      this.messageCount = 0;
+      this.knowledgeEl.innerHTML = `
+        <div class="ideas-knowledge-empty" id="ideas-knowledge-empty">
+          <div class="knowledge-empty-icon">&#9671;</div>
+          <div class="knowledge-empty-text">The curator agent will synthesize findings here as the swarm works...</div>
+        </div>
+      `;
+      this.knowledgeEmptyEl = document.getElementById("ideas-knowledge-empty")!;
+      this.updateStats();
+      return;
+    }
+
     switch (msg.type) {
       case "chat_message":
         this.addFeedItem({
