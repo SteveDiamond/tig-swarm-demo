@@ -48,14 +48,19 @@ export class FeedPanel implements Panel {
         break;
       case "experiment_published": {
         // Score is already a per-instance average from the server, matching
-        // the leaderboard / routes panel. The % delta is vs the previous
-        // global best: positive when this run beat it (improved), negative
-        // when it was worse.
+        // the leaderboard / routes panel. delta_vs_best_pct from the server
+        // is *improvement-positive* (positive = score dropped), but the feed
+        // shows the *score change* so the sign matches the direction of the
+        // score: an improvement of 5% displays as "-5%" in green, a 5%
+        // regression displays as "+5%" in red.
         const delta = msg.delta_vs_best_pct;
-        const deltaStr =
-          delta == null
-            ? ""
-            : ` (${delta >= 0 ? "+" : ""}${delta.toFixed(6)}%)`;
+        let deltaStr = "";
+        if (delta != null) {
+          const scoreChange = -delta;
+          const sign = scoreChange >= 0 ? "+" : "";
+          const color = delta > 0 ? "var(--green)" : delta < 0 ? "var(--red)" : "var(--text-dim)";
+          deltaStr = ` (<span style="color:${color}">${sign}${scoreChange.toFixed(6)}%</span>)`;
+        }
         if (msg.is_new_best) {
           text = `<b>${msg.agent_name}</b> improved &mdash; ${msg.score.toFixed(1)}${deltaStr}`;
           eventType = "new_global_best";
