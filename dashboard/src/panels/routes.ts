@@ -2,6 +2,19 @@ import * as d3 from "d3";
 import type { Panel, WSMessage, RouteData, AllRouteData, RoutePoint } from "../types";
 import { getRouteColor } from "../lib/colors";
 
+// Drawing sizes as fractions of the viewBox side length. Everything else in
+// this file should reference these constants — never hardcode pixel/unit
+// values, because the viewBox is fit tightly to the data and its absolute
+// scale varies per dataset. Tweak these to resize elements.
+const STYLE = {
+  customerRadius: 0.006,          // customer dot radius
+  depotSize:      0.020,          // depot diamond side length (before rotate)
+  routeStroke:    0.004,          // main route line thickness
+  glowStroke:     0.012,          // blurred glow halo behind each route
+  routeDashOn:    0.018,          // dash length for the flowing stroke
+  routeDashOff:   0.007,          // gap length for the flowing stroke
+} as const;
+
 const routeLine = d3.line<RoutePoint>()
   .x((d) => d.x)
   .y((d) => d.y)
@@ -42,6 +55,10 @@ export class RoutesPanel implements Panel {
   private currentIndex = 0;
   private currentRouteData: RouteData | null = null;
   private numInstances = 1;
+  // Side length of the current viewBox in SVG user units. All draw sizes
+  // are computed as STYLE.* × viewSide so they stay visually consistent
+  // regardless of how spread out the underlying data is.
+  private viewSide = 1000;
   // Raw experiment score (sum across all instances). The displayed SCORE is
   // this divided by numInstances so it matches the leaderboard's avg metric.
   private rawScore: number | null = null;
@@ -124,6 +141,7 @@ export class RoutesPanel implements Panel {
   private updateViewBox() {
     const all = Object.values(this.allInstances);
     if (all.length === 0) {
+      this.viewSide = 1000;
       this.svg.attr("viewBox", "0 0 1000 1000");
       return;
     }
@@ -141,6 +159,7 @@ export class RoutesPanel implements Panel {
       }
     }
     if (!isFinite(minX)) {
+      this.viewSide = 1000;
       this.svg.attr("viewBox", "0 0 1000 1000");
       return;
     }
@@ -153,6 +172,7 @@ export class RoutesPanel implements Panel {
     const finalSide = side + padding * 2;
     const x = cx - finalSide / 2;
     const y = cy - finalSide / 2;
+    this.viewSide = finalSide;
     this.svg.attr("viewBox", `${x} ${y} ${finalSide} ${finalSide}`);
   }
 
@@ -223,6 +243,13 @@ export class RoutesPanel implements Panel {
     this.customerGroup.selectAll("*").remove();
     this.depotGroup.selectAll("*").remove();
 
+    const s = this.viewSide;
+    const customerR = STYLE.customerRadius * s;
+    const routeW = STYLE.routeStroke * s;
+    const glowW = STYLE.glowStroke * s;
+    const dashOn = STYLE.routeDashOn * s;
+    const dashOff = STYLE.routeDashOff * s;
+
     data.routes.forEach((route, i) => {
       const path = fullPath(data, route);
       const color = getRouteColor(i);
@@ -233,7 +260,7 @@ export class RoutesPanel implements Panel {
         .attr("d", routeLine as any)
         .attr("fill", "none")
         .attr("stroke", color)
-        .attr("stroke-width", 80)
+        .attr("stroke-width", glowW)
         .attr("stroke-opacity", 0.1)
         .attr("filter", "url(#route-glow)");
 
@@ -243,9 +270,9 @@ export class RoutesPanel implements Panel {
         .attr("d", routeLine as any)
         .attr("fill", "none")
         .attr("stroke", color)
-        .attr("stroke-width", 32)
+        .attr("stroke-width", routeW)
         .attr("stroke-opacity", 0.9)
-        .attr("stroke-dasharray", "80 32")
+        .attr("stroke-dasharray", `${dashOn} ${dashOff}`)
         .attr("class", "route-flowing");
 
       // Customers
@@ -253,14 +280,14 @@ export class RoutesPanel implements Panel {
         this.customerGroup.append("circle")
           .attr("cx", pt.x)
           .attr("cy", pt.y)
-          .attr("r", 40)
+          .attr("r", customerR)
           .attr("fill", color)
           .attr("opacity", 0.75);
       });
     });
 
     // Depot
-    const depotSize = 100;
+    const depotSize = STYLE.depotSize * s;
     this.depotGroup.append("rect")
       .attr("x", data.depot.x - depotSize / 2)
       .attr("y", data.depot.y - depotSize / 2)
