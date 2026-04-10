@@ -365,9 +365,19 @@ html, body {
   padding: 12px 16px;
 }
 
+.routes-svg-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
 .routes-panel svg {
-  flex: 1;
-  width: 100%;
+  display: block;
+  /* width/height set imperatively by routes.ts so the SVG is the largest
+     square that fits inside .routes-svg-wrap, eliminating viewBox letterbox */
 }
 
 .routes-score {
@@ -424,14 +434,11 @@ html, body {
 }
 
 .routes-nav {
-  position: absolute;
-  top: 40px;
-  left: 0;
-  right: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
+  margin: 4px 0 6px 0;
   z-index: 3;
 }
 

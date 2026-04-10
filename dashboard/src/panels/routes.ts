@@ -54,11 +54,13 @@ export class RoutesPanel implements Panel {
     container.innerHTML = `
       <div class="panel-inner routes-panel">
         <div class="panel-label">ROUTES</div>
-        <svg id="routes-svg"></svg>
         <div class="routes-nav" id="routes-nav" style="display:none">
           <button class="routes-nav-btn" id="routes-prev">&lsaquo;</button>
           <span class="routes-instance-label" id="routes-instance-label"></span>
           <button class="routes-nav-btn" id="routes-next">&rsaquo;</button>
+        </div>
+        <div class="routes-svg-wrap" id="routes-svg-wrap">
+          <svg id="routes-svg"></svg>
         </div>
         <div class="routes-route-distance">
           <div class="routes-sub-label">ROUTE DISTANCE</div>
@@ -97,11 +99,61 @@ export class RoutesPanel implements Panel {
     this.customerGroup = this.svg.append("g").attr("class", "customers");
     this.depotGroup = this.svg.append("g").attr("class", "depot");
 
+    // Make the SVG element a square sized to the largest square that fits
+    // inside the wrap. Without this the SVG fills the wrap rectangle but the
+    // 1:1 viewBox letterboxes a square inside it, leaving large empty side
+    // margins on a wide panel.
+    const wrap = document.getElementById("routes-svg-wrap")!;
+    const resize = () => {
+      const size = Math.max(0, Math.min(wrap.clientWidth, wrap.clientHeight));
+      this.svg.attr("width", size).attr("height", size);
+    };
+    new ResizeObserver(resize).observe(wrap);
+    resize();
+
     setInterval(() => {
       if (this.instanceKeys.length > 1) {
         this.navigate(1);
       }
     }, 8000);
+  }
+
+  // Compute a square viewBox that tightly bounds *all* instances' data with a
+  // small padding margin. Using all instances (rather than per-instance) keeps
+  // the zoom stable as you click through them.
+  private updateViewBox() {
+    const all = Object.values(this.allInstances);
+    if (all.length === 0) {
+      this.svg.attr("viewBox", "0 0 1000 1000");
+      return;
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const inst of all) {
+      const consider = (x: number, y: number) => {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      };
+      consider(inst.depot.x, inst.depot.y);
+      for (const route of inst.routes) {
+        for (const p of route.path) consider(p.x, p.y);
+      }
+    }
+    if (!isFinite(minX)) {
+      this.svg.attr("viewBox", "0 0 1000 1000");
+      return;
+    }
+    const w = maxX - minX;
+    const h = maxY - minY;
+    const side = Math.max(w, h, 1);
+    const padding = side * 0.06;
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    const finalSide = side + padding * 2;
+    const x = cx - finalSide / 2;
+    const y = cy - finalSide / 2;
+    this.svg.attr("viewBox", `${x} ${y} ${finalSide} ${finalSide}`);
   }
 
   private navigate(delta: number) {
@@ -139,6 +191,7 @@ export class RoutesPanel implements Panel {
       if (msg.num_instances) this.numInstances = msg.num_instances;
       this.rawScore = msg.score;
       this.allInstances = msg.route_data;
+      this.updateViewBox();
 
       const keys = this.instanceKeys;
       if (this.currentIndex >= keys.length) this.currentIndex = 0;
