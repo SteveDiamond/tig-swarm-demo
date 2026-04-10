@@ -62,7 +62,19 @@ fn run_solve(
         #[cfg(feature = "knapsack")]
         "knapsack" => dispatch_solve!(knapsack),
         #[cfg(feature = "vehicle_routing")]
-        "vehicle_routing" => dispatch_solve!(vehicle_routing),
+        "vehicle_routing" => {
+            let instance = challenges::vehicle_routing::Challenge::from_txt(&content)?;
+            let save_solution_fn =
+                |solution: &challenges::vehicle_routing::Solution| -> Result<()> {
+                    fs::write(&solution_file, solution.to_txt())?;
+                    Ok(())
+                };
+            challenges::vehicle_routing::algorithm::solve_challenge(
+                &instance,
+                &save_solution_fn,
+                hyperparameters,
+            )?;
+        }
         #[cfg(feature = "job_scheduling")]
         "job_scheduling" => dispatch_solve!(job_scheduling),
         _ => anyhow::bail!(

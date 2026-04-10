@@ -1,7 +1,4 @@
-#[cfg(not(feature = "baseline"))]
 pub mod algorithm;
-#[cfg(feature = "baseline")]
-pub mod baseline;
 mod challenge;
 pub mod solomon;
 mod solution;
