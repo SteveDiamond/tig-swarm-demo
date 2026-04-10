@@ -23,6 +23,17 @@ logger = logging.getLogger("swarm")
 
 DEFAULT_BASELINE = 1850.5
 
+# Seed algorithm served as best_algorithm_code on a fresh run, before any
+# experiments have been published. A thin solve_challenge wrapper around
+# the Solomon insertion heuristic — the first agent to run benchmarks against
+# this is what establishes the initial best.
+_SEED_PATH = Path(__file__).parent / "seed_algorithm.rs"
+try:
+    SEED_ALGORITHM_CODE = _SEED_PATH.read_text()
+except FileNotFoundError:
+    logger.warning("seed_algorithm.rs not found at %s", _SEED_PATH)
+    SEED_ALGORITHM_CODE = ""
+
 # Cached config — refreshed on admin config update
 _config_cache: dict | None = None
 
@@ -242,7 +253,7 @@ async def get_state():
     return {
         "baseline_score": baseline,
         "best_score": best["score"] if best else baseline,
-        "best_algorithm_code": best["algorithm_code"] if best else "",
+        "best_algorithm_code": best["algorithm_code"] if best else SEED_ALGORITHM_CODE,
         "best_experiment_id": best["id"] if best else None,
         "best_route_data": json.loads(best["route_data"]) if best and best["route_data"] else None,
         "num_instances": get_num_instances(config),
@@ -394,16 +405,16 @@ async def create_experiment(req: ExperimentCreate):
 
         prev_best = await db.get_global_best(conn)
         is_new_best = req.feasible and (prev_best is None or req.score < prev_best["score"])
-        # % difference of this experiment vs the previous global best. Positive
-        # means this run beat the previous best; negative means it's worse.
-        # None when there is no previous best to compare against.
+        # Semantic % improvement vs the previous global best (lower is
+        # better, so positive = score dropped = improvement; negative =
+        # score rose = regression). None when there is no previous best.
         delta_vs_best_pct: float | None = None
         if prev_best is not None and prev_best["score"] > 0:
             delta_vs_best_pct = round(
-                ((prev_best["score"] - req.score) / prev_best["score"]) * 100, 2
+                ((prev_best["score"] - req.score) / prev_best["score"]) * 100, 6
             )
-        # For new_global_best broadcasts we only care about the positive case;
-        # reuse the same number.
+        # new_global_best only fires on an actual improvement, so we reuse
+        # the same positive number.
         incremental_pct = delta_vs_best_pct if is_new_best else None
 
         if is_new_best:

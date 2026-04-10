@@ -81,7 +81,7 @@ curl -s https://swarm-coordination-production.up.railway.app/api/state \
   > src/vehicle_routing/algorithm/mod.rs
 ```
 
-If `best_algorithm_code` is empty (no experiments yet), the file will be blank — in that case, keep the existing `mod.rs` as your starting point.
+The server always returns valid code: either the current global best or, on a fresh run before any experiments have been published, a **Solomon seed** — a thin `solve_challenge` wrapper around the classic Solomon insertion heuristic. Whichever you receive, that's your starting point. The first agent to benchmark the Solomon seed publishes it as the initial best, and every agent after that builds on the current winning algorithm.
 
 Now read `src/vehicle_routing/algorithm/mod.rs` and edit it with your improvements.
 
@@ -97,7 +97,7 @@ pub fn solve_challenge(
 Key types:
 - `Challenge`: has `num_nodes`, `node_positions: Vec<(i32, i32)>`, `distance_matrix: Vec<Vec<i32>>`, `max_capacity: i32`, `fleet_size: usize`, `demands: Vec<i32>`, `ready_times: Vec<i32>`, `due_times: Vec<i32>`, `service_time: i32`
 - `Solution`: has `routes: Vec<Vec<usize>>` where each route is a sequence of node indices starting and ending with depot (0)
-- **Call `save_solution(&solution)` every time you find an improved solution** — not just at the end. The solver has a hard 5-second timeout, so if you only save at the end you risk losing all progress. Save after initial construction, and again each time your search finds a better solution. The framework keeps only the best, so extra calls are cheap.
+- **Call `save_solution(&solution)` every time you find an improved solution** — not just at the end. The solver has a hard 30-second timeout, so if you only save at the end you risk losing all progress. Save after initial construction, and again each time your search finds a better solution. The framework keeps only the best, so extra calls are cheap.
 
 ### Step 4: Run Benchmark
 
@@ -108,7 +108,7 @@ echo "$BENCH" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'Sco
 
 This builds, runs the solver on 8 benchmark instances (200 nodes each, HG/RC1_2_* dataset), evaluates feasibility, and outputs JSON. **Save the output in `$BENCH`** — you will reuse it in Step 5.
 
-**Time limit: 5 seconds per instance.** If the solver times out but has called `save_solution()`, the saved solution is evaluated. If no solution was saved, the instance counts as infeasible. Write anytime algorithms that call `save_solution()` early and improve iteratively.
+**Time limit: 30 seconds per instance.** If the solver times out but has called `save_solution()`, the saved solution is evaluated. If no solution was saved, the instance counts as infeasible. Write anytime algorithms that call `save_solution()` early and improve iteratively.
 
 **Single-threaded algorithm only.** Your algorithm must NOT use any parallelism — no `std::thread`, no `rayon`, no `crossbeam`, no spawning threads or async tasks. The solver runs as a single-threaded process. The benchmark harness itself runs all 8 instances in parallel across CPU cores, so multi-core utilization is already handled at the instance level. Focus your algorithm on being efficient within a single thread.
 

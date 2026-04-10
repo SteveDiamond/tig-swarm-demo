@@ -22,7 +22,7 @@ INSTANCES = [
     "RC1_2_7.txt",
     "RC1_2_8.txt",
 ]
-SOLVER_TIMEOUT = 5
+SOLVER_TIMEOUT = 30
 
 def build():
     subprocess.run(

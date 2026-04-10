@@ -3,7 +3,7 @@ pub mod algorithm;
 #[cfg(feature = "baseline")]
 pub mod baseline;
 mod challenge;
-mod solomon;
+pub mod solomon;
 mod solution;
 
 pub use challenge::*;
