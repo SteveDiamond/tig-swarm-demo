@@ -84,8 +84,10 @@ export interface ExperimentPublished {
   score: number;
   feasible: boolean;
   improvement_pct: number;
-  // % delta of this run vs the previous global best. Positive = this run beat
-  // the previous best; negative = worse. Null when there is no previous best.
+  // Semantic % improvement vs the previous global best:
+  // `(prev_best - score) / prev_best * 100`. Positive = score dropped
+  // (improvement), negative = score rose (regression). Null when there
+  // is no previous best.
   delta_vs_best_pct: number | null;
   num_instances: number;
   is_new_best: boolean;

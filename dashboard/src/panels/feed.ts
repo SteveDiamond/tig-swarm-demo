@@ -50,7 +50,7 @@ export class FeedPanel implements Panel {
         const deltaStr =
           delta == null
             ? ""
-            : ` (${delta >= 0 ? "+" : ""}${delta.toFixed(2)}%)`;
+            : ` (${delta >= 0 ? "+" : ""}${delta.toFixed(6)}%)`;
         if (msg.is_new_best) {
           text = `<b>${msg.agent_name}</b> improved &mdash; ${avgScore.toFixed(1)}${deltaStr}`;
           eventType = "new_global_best";

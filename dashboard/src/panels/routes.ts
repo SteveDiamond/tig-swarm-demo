@@ -226,7 +226,7 @@ export class RoutesPanel implements Panel {
       // only on a new best, so the value is positive (lower score = better).
       if (msg.incremental_improvement_pct != null) {
         const v = msg.incremental_improvement_pct;
-        this.scoreDeltaEl.textContent = `+${v.toFixed(2)}% vs prev best`;
+        this.scoreDeltaEl.textContent = `+${v.toFixed(5)}% vs prev best`;
         this.scoreDeltaEl.style.color = "var(--green)";
       } else {
         this.scoreDeltaEl.textContent = "first global best";

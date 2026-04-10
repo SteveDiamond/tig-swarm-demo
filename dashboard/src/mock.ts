@@ -156,10 +156,11 @@ export class MockDataGenerator {
       }
       agent.scoreSum += score;
 
+      // Semantic % improvement vs prev best: positive = score dropped.
       const deltaVsBest =
         prevBestForBroadcast > 0 && prevBestForBroadcast < Infinity
           ? Number(
-              (((prevBestForBroadcast - score) / prevBestForBroadcast) * 100).toFixed(2),
+              (((prevBestForBroadcast - score) / prevBestForBroadcast) * 100).toFixed(6),
             )
           : null;
       this.emit({

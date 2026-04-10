@@ -107,7 +107,12 @@ export class ChartPanel implements Panel {
       .range([0, w]);
 
     const scoreMin = d3.min(this.data, (d) => d.score)! * 0.98;
-    const scoreMax = this.baseline * 1.01;
+    // Soft cap at 8k: normally the curve tops out at 8000 regardless of the
+    // baseline, but if a data point exceeds that (e.g. an unusually poor
+    // feasible run), the scale expands to fit it so the curve never escapes
+    // the plot region.
+    const dataMax = d3.max(this.data, (d) => d.score)!;
+    const scoreMax = Math.max(8000, dataMax);
 
     // Standard Y axis: high values at the top, low at the bottom. The curve
     // descends as the score improves.
