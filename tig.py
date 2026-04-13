@@ -74,7 +74,6 @@ def run_algorithm_on_instance(
     out_dir: str = None,
 ) -> tuple:
     try:
-        time_taken, memory = None, None
         if out_dir:
             os.makedirs(
                 os.path.join(out_dir, os.path.dirname(instance_file)),
@@ -85,11 +84,11 @@ def run_algorithm_on_instance(
             solution_path = os.path.join(dataset_dir, f"{instance_file}.solution")
         logger.info("Solving %s", instance_file)
 
+        solver_bin = os.path.join(ROOT_DIR, "target", "release", "tig_solver")
+        if not os.path.isfile(solver_bin) and os.path.isfile(solver_bin + ".exe"):
+            solver_bin = solver_bin + ".exe"
         cmd = [
-            "/usr/bin/time",
-            "-f", "Time: %e Memory: %M",
-            "timeout", str(timeout),
-            "target/release/tig_solver",
+            solver_bin,
             challenge,
             os.path.join(dataset_dir, instance_file),
             solution_path,
@@ -98,14 +97,24 @@ def run_algorithm_on_instance(
             cmd += ["--hyperparameters", hyperparameters]
         logger.debug("Solver command: %s", " ".join(cmd))
 
-        snapshot_count = 0
         if interval:
             next_snapshot_at = time.time() + interval
         else:
             next_snapshot_at = None
 
-        proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, text=True)
+        start = time.perf_counter()
+        deadline = start + float(timeout)
+        proc = subprocess.Popen(
+            cmd,
+            cwd=ROOT_DIR,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         stderr = None
+        timed_out = False
+        snapshot_count = 0
         while True:
             now = time.time()
             if next_snapshot_at is not None and now >= next_snapshot_at:
@@ -118,28 +127,46 @@ def run_algorithm_on_instance(
                     logger.debug("Snapshot skipped; solution does not exist yet: %s", solution_path)
                 next_snapshot_at += interval
 
+            remaining = deadline - time.perf_counter()
+            if remaining <= 0:
+                timed_out = True
+                proc.kill()
+                try:
+                    _, stderr = proc.communicate(timeout=30)
+                except subprocess.TimeoutExpired:
+                    logger.warning("Solver did not exit after kill: %s", instance_file)
+                    proc.wait()
+                break
+
             try:
-                _, stderr = proc.communicate(timeout=0.1)
+                _, stderr = proc.communicate(timeout=min(0.1, max(remaining, 0.001)))
                 break
             except subprocess.TimeoutExpired:
                 pass
-        
-        for line in (stderr or "").strip().split("\n"):
-            if line.startswith("Time:"):
-                parts = line.split(" ")
-                time_taken = float(parts[1].strip())
-                memory = int(parts[3].strip())
 
-        logger.info(
-            "Solved %s | time=%.3fs memory=%sKB",
-            instance_file,
-            time_taken or -1,
-            memory,
-        )
-        return instance_file, time_taken, memory
+        time_taken = time.perf_counter() - start
+
+        if timed_out:
+            logger.warning("Timeout %s after %.3fs", instance_file, time_taken)
+            return instance_file, time_taken
+
+        if proc.returncode != 0:
+            err_tail = (stderr or "").strip()
+            if len(err_tail) > 500:
+                err_tail = err_tail[-500:]
+            logger.error(
+                "Solver failed %s (exit=%s): %s",
+                instance_file,
+                proc.returncode,
+                err_tail or "(no stderr)",
+            )
+            return instance_file, time_taken
+
+        logger.info("Solved %s | time=%.3fs", instance_file, time_taken)
+        return instance_file, time_taken
     except Exception as e:
         logger.exception("Unexpected error: %s (%s)", instance_file, e)
-        return instance_file, None, None
+        return instance_file, None
 
 def run_algorithm(
     challenge: str,
@@ -192,7 +219,7 @@ def run_algorithm(
     if csv_path:
         with open(csv_path, "w") as f:
             writer = csv.writer(f)
-            writer.writerow(["instance_file", "time_taken", "memory"])
+            writer.writerow(["instance_file", "time_taken"])
             for result in results:
                 writer.writerow(result)
 
