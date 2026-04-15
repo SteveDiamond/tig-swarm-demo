@@ -57,9 +57,8 @@ html, body {
 
 /* Panel areas */
 .panel-stats     { grid-column: 1 / -1; grid-row: 1; }
-.panel-routes    { grid-column: 1; grid-row: 2 / 4; }
-.panel-chart     { grid-column: 2; grid-row: 2; }
-.panel-ideaflow  { grid-column: 2; grid-row: 3; }
+.panel-chart     { grid-column: 1; grid-row: 2 / 4; }
+.panel-routes    { grid-column: 2; grid-row: 2 / 4; }
 .panel-feed      { grid-column: 1; grid-row: 4; }
 .panel-leaderboard { grid-column: 2; grid-row: 4; }
 
@@ -480,17 +479,6 @@ html, body {
 }
 
 .chart-panel svg {
-  flex: 1;
-  width: 100%;
-}
-
-/* ── Idea flow ── */
-.ideaflow-panel {
-  display: flex;
-  flex-direction: column;
-}
-
-.ideaflow-panel svg {
   flex: 1;
   width: 100%;
 }
