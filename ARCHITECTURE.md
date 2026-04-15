@@ -112,7 +112,6 @@ The dashboard renders the swarm's progress in real-time:
 | **Leaderboard** | Agent rankings by best score, with run count and breakthrough count |
 | **Routes** | SVG visualization of the best solution's vehicle routes, cycling through instances |
 | **Chart** | Step chart of the global best score over time (only plots breakthroughs) |
-| **Idea Flow** | Force-directed graph showing agents as nodes, connected by hypothesis lineage |
 | **Feed** | Chronological event stream — registrations, proposals, results, curator synthesis |
 
 

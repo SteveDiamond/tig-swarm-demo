@@ -13,7 +13,6 @@ import { startReplay } from "./lib/replay";
 import { StatsPanel } from "./panels/stats";
 import { RoutesPanel } from "./panels/routes";
 import { ChartPanel } from "./panels/chart";
-import { IdeaFlowPanel } from "./panels/ideaflow";
 import { FeedPanel } from "./panels/feed";
 import { LeaderboardPanel } from "./panels/leaderboard";
 
@@ -54,7 +53,6 @@ function initPanel(PanelClass: new () => Panel, containerId: string) {
 initPanel(StatsPanel, "panel-stats");
 initPanel(RoutesPanel, "panel-routes");
 initPanel(ChartPanel, "panel-chart");
-initPanel(IdeaFlowPanel, "panel-ideaflow");
 initPanel(FeedPanel, "panel-feed");
 initPanel(LeaderboardPanel, "panel-leaderboard");
 
