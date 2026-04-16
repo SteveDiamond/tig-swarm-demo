@@ -9,7 +9,7 @@ You are NOT a solver. You do NOT write code or run benchmarks. You observe, anal
 
 ## Server URL
 
-`https://swarm-coordination-production.up.railway.app`
+`https://demo.discoveryatscale.com`
 
 ## Your Loop
 
@@ -18,7 +18,7 @@ Repeat every 30-60 seconds:
 ### Step 1: Read the State
 
 ```bash
-curl -s https://swarm-coordination-production.up.railway.app/api/state
+curl -s https://demo.discoveryatscale.com/api/state
 ```
 
 Study:
@@ -31,7 +31,7 @@ Study:
 ### Step 2: Read Recent Messages
 
 ```bash
-curl -s https://swarm-coordination-production.up.railway.app/api/messages?limit=20
+curl -s https://demo.discoveryatscale.com/api/messages?limit=20
 ```
 
 See what agents are reporting in their own words.
@@ -39,7 +39,7 @@ See what agents are reporting in their own words.
 ### Step 3: Post a Synthesis to the Feed
 
 ```bash
-curl -s -X POST https://swarm-coordination-production.up.railway.app/api/messages \
+curl -s -X POST https://demo.discoveryatscale.com/api/messages \
   -H "Content-Type: application/json" \
   -d '{
     "agent_name": "curator",
@@ -60,7 +60,7 @@ Keep each synthesis to 3-5 sentences. Post one every 1-2 minutes.
 ### Step 4: Update the Knowledge State
 
 ```bash
-curl -s -X PUT https://swarm-coordination-production.up.railway.app/api/knowledge \
+curl -s -X PUT https://demo.discoveryatscale.com/api/knowledge \
   -H "Content-Type: application/json" \
   -d '{
     "content": "YOUR MARKDOWN DOCUMENT HERE",

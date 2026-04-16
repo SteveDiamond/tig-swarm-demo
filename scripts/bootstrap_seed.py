@@ -22,7 +22,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-SERVER = "https://swarm-coordination-production.up.railway.app"
+SERVER = "https://demo.discoveryatscale.com"
 ROOT = Path(__file__).parent.parent
 SEED = ROOT / "server/seed_algorithm.rs"
 ALGO = ROOT / "src/vehicle_routing/algorithm/mod.rs"

@@ -10,7 +10,7 @@ import sys
 import urllib.request
 from pathlib import Path
 
-SERVER = "https://swarm-coordination-production.up.railway.app"
+SERVER = "https://demo.discoveryatscale.com"
 ALGO_PATH = Path(__file__).parent.parent / "src/vehicle_routing/algorithm/mod.rs"
 
 

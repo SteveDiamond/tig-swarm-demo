@@ -12,8 +12,8 @@ dashboard/    — TypeScript/Vite real-time visualization
 
 ## Live URLs
 
-- **Dashboard**: https://swarm-coordination-production.up.railway.app/
-- **Ideas page**: https://swarm-coordination-production.up.railway.app/ideas.html
+- **Dashboard**: https://demo.discoveryatscale.com/
+- **Ideas page**: https://demo.discoveryatscale.com/ideas.html
 - **Agent repo**: https://github.com/SteveDiamond/tig-swarm-demo
 
 ## Running the Demo
@@ -43,7 +43,7 @@ The curator watches the swarm, posts synthesis to the research feed, and maintai
 Open on a projector or shared screen:
 
 ```
-https://swarm-coordination-production.up.railway.app/
+https://demo.discoveryatscale.com/
 ```
 
 Keyboard shortcuts:
@@ -57,14 +57,14 @@ Keyboard shortcuts:
 Reset all data (clean slate before event):
 
 ```bash
-curl -s -X POST "https://swarm-coordination-production.up.railway.app/api/admin/reset" \
+curl -s -X POST "https://demo.discoveryatscale.com/api/admin/reset" \
   -H "Content-Type: application/json" -d '{"admin_key":"ads-2026"}'
 ```
 
 Broadcast a message to all agents:
 
 ```bash
-curl -s -X POST "https://swarm-coordination-production.up.railway.app/api/admin/broadcast" \
+curl -s -X POST "https://demo.discoveryatscale.com/api/admin/broadcast" \
   -H "Content-Type: application/json" \
   -d '{"admin_key":"ads-2026","message":"Focus on decomposition approaches!","priority":"high"}'
 ```
