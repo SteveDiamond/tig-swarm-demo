@@ -59,21 +59,31 @@ export class ChartPanel implements Panel {
   }
 
   // Seed the chart with the full best-so-far trajectory in one batch.
-  // `entries` must be in chronological order; each represents a global best
-  // at the time it was set (so the score strictly decreases across the list).
-  // Called on initial load so the chart reflects the entire run, not just the
-  // recent-20 window returned by /api/state.
+  // `entries` must be in chronological order. Called on initial load so the
+  // chart reflects the entire run, not just the recent-20 window returned by
+  // /api/state.
+  //
+  // We apply a running-minimum filter: server-side best_history can contain
+  // non-improving rows (seen in practice after resets and from a race in the
+  // is_new_best check), but the chart is a best-so-far trajectory, so only
+  // strictly-improving points belong on it.
   seedHistory(entries: { score: number; agent_name: string; created_at: string }[]) {
     if (!entries.length) return;
     const first = new Date(entries[0].created_at).getTime();
     this.startTime = first;
-    this.data = entries.map((e) => ({
-      time: Math.max(0, new Date(e.created_at).getTime() - first),
-      score: e.score,
-      agentName: e.agent_name,
-      // Every best_history entry is, by definition, a new global best.
-      isBreakthrough: true,
-    }));
+    const filtered: DataPoint[] = [];
+    let runningBest = Infinity;
+    for (const e of entries) {
+      if (e.score >= runningBest) continue;
+      runningBest = e.score;
+      filtered.push({
+        time: Math.max(0, new Date(e.created_at).getTime() - first),
+        score: e.score,
+        agentName: e.agent_name,
+        isBreakthrough: true,
+      });
+    }
+    this.data = filtered;
     this.redraw();
   }
 
