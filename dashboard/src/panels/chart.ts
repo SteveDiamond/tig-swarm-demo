@@ -58,6 +58,25 @@ export class ChartPanel implements Panel {
     // No continuous tick — the x-axis only advances when a new best lands.
   }
 
+  // Seed the chart with the full best-so-far trajectory in one batch.
+  // `entries` must be in chronological order; each represents a global best
+  // at the time it was set (so the score strictly decreases across the list).
+  // Called on initial load so the chart reflects the entire run, not just the
+  // recent-20 window returned by /api/state.
+  seedHistory(entries: { score: number; agent_name: string; created_at: string }[]) {
+    if (!entries.length) return;
+    const first = new Date(entries[0].created_at).getTime();
+    this.startTime = first;
+    this.data = entries.map((e) => ({
+      time: Math.max(0, new Date(e.created_at).getTime() - first),
+      score: e.score,
+      agentName: e.agent_name,
+      // Every best_history entry is, by definition, a new global best.
+      isBreakthrough: true,
+    }));
+    this.redraw();
+  }
+
   handleMessage(msg: WSMessage) {
     if (msg.type === "reset") {
       this.data = [];

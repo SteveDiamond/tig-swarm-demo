@@ -53,7 +53,7 @@ function initPanel(PanelClass: new () => Panel, containerId: string) {
 
 initPanel(StatsPanel, "panel-stats");
 initPanel(RoutesPanel, "panel-routes");
-initPanel(ChartPanel, "panel-chart");
+const chartPanel = initPanel(ChartPanel, "panel-chart") as ChartPanel;
 initPanel(IdeaFlowPanel, "panel-ideaflow");
 initPanel(FeedPanel, "panel-feed");
 initPanel(LeaderboardPanel, "panel-leaderboard");
@@ -80,9 +80,34 @@ function handleMessage(msg: WSMessage) {
 // ── Fetch initial state from REST API ──
 async function loadInitialState(apiUrl: string) {
   try {
-    const res = await fetch(`${apiUrl}/api/state`);
-    if (!res.ok) return;
-    const state = await res.json();
+    // /api/state gives current snapshot; /api/replay gives the full
+    // best-so-far trajectory. We need both: the snapshot drives stats /
+    // leaderboard / feed, and the trajectory seeds the chart and lets us
+    // compute the incremental delta for the routes panel.
+    const [stateRes, replayRes] = await Promise.all([
+      fetch(`${apiUrl}/api/state`),
+      fetch(`${apiUrl}/api/replay`),
+    ]);
+    if (!stateRes.ok) return;
+    const state = await stateRes.json();
+    const replay: Array<{
+      experiment_id: string;
+      agent_name: string;
+      score: number;
+      created_at: string;
+    }> = replayRes.ok ? await replayRes.json() : [];
+
+    // Seed the chart with the entire trajectory, not just recent_experiments.
+    chartPanel.seedHistory(replay);
+
+    // Incremental % improvement of the current best vs the prior best.
+    // Null only when there has been exactly one (or zero) global bests.
+    const incrementalPct =
+      replay.length >= 2
+        ? ((replay[replay.length - 2].score - replay[replay.length - 1].score) /
+            replay[replay.length - 2].score) *
+          100
+        : null;
 
     // Emit stats
     handleMessage({
@@ -102,12 +127,13 @@ async function loadInitialState(apiUrl: string) {
       handleMessage({
         type: "new_global_best",
         experiment_id: state.best_experiment_id || "",
-        agent_name: "swarm",
+        agent_name: replay[replay.length - 1]?.agent_name || "swarm",
         agent_id: "",
         score: state.best_score,
         improvement_pct: state.improvement_pct || 0,
-        // No prior best to compare against on initial load
-        incremental_improvement_pct: null,
+        // Derived from /api/replay above. Null only when the current best
+        // is the very first global best of the run.
+        incremental_improvement_pct: incrementalPct,
         num_instances: state.num_instances || 1,
         route_data: state.best_route_data,
         timestamp: new Date().toISOString(),
