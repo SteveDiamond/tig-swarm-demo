@@ -1,6 +1,7 @@
 import * as d3 from "d3";
 import type { Panel, WSMessage, RouteData, AllRouteData, RoutePoint } from "../types";
 import { getRouteColor } from "../lib/colors";
+import { BKS_AVERAGE, bksGapPct } from "../lib/bks";
 
 // Drawing sizes as fractions of the viewBox side length. Everything else in
 // this file should reference these constants — never hardcode pixel/unit
@@ -47,6 +48,7 @@ export class RoutesPanel implements Panel {
   private depotGroup!: any;
   private scoreEl!: HTMLElement;
   private scoreDeltaEl!: HTMLElement;
+  private scoreBksEl!: HTMLElement;
   private routeDistanceEl!: HTMLElement;
   private instanceLabelEl!: HTMLElement;
   private navEl!: HTMLElement;
@@ -87,12 +89,14 @@ export class RoutesPanel implements Panel {
           <div class="routes-score-label">SCORE</div>
           <div class="routes-score-value" id="routes-score">---</div>
           <div class="routes-score-delta" id="routes-score-delta"></div>
+          <div class="routes-score-bks" id="routes-score-bks" title="Gap vs average literature Best Known Solution across the 24 HG_200 instances (avg ${BKS_AVERAGE.toFixed(2)})"></div>
         </div>
       </div>
     `;
 
     this.scoreEl = document.getElementById("routes-score")!;
     this.scoreDeltaEl = document.getElementById("routes-score-delta")!;
+    this.scoreBksEl = document.getElementById("routes-score-bks")!;
     this.routeDistanceEl = document.getElementById("routes-route-distance")!;
     this.instanceLabelEl = document.getElementById("routes-instance-label")!;
     this.navEl = document.getElementById("routes-nav")!;
@@ -209,6 +213,8 @@ export class RoutesPanel implements Panel {
       this.svg.attr("viewBox", "0 0 1000 1000");
       this.scoreEl.textContent = "---";
       this.scoreDeltaEl.textContent = "";
+      this.scoreBksEl.textContent = "";
+      this.scoreBksEl.style.color = "";
       this.routeDistanceEl.textContent = "---";
       this.navEl.style.display = "none";
       this.instanceLabelEl.textContent = "";
@@ -223,6 +229,7 @@ export class RoutesPanel implements Panel {
       if (msg.best_score != null && !this.currentRouteData) {
         this.rawScore = msg.best_score;
         this.scoreEl.textContent = msg.best_score.toFixed(1);
+        this.updateBksGap(msg.best_score);
       }
     }
 
@@ -240,6 +247,7 @@ export class RoutesPanel implements Panel {
 
       // Score is already a per-instance average from the server.
       this.scoreEl.textContent = msg.score.toFixed(1);
+      this.updateBksGap(msg.score);
 
       // incremental_improvement_pct is improvement-positive. This fires only
       // on a new best, so the value is positive — which we display as a
@@ -254,6 +262,17 @@ export class RoutesPanel implements Panel {
         this.scoreDeltaEl.style.color = "var(--text-dim)";
       }
     }
+  }
+
+  // Displayed score is an average across instances; compare directly to the
+  // literature BKS average. Red when above (gap), green when below (would beat
+  // the published optima — shouldn't happen since BKS=optimum, but handled for
+  // completeness), dim at parity.
+  private updateBksGap(score: number) {
+    const pct = bksGapPct(score);
+    const sign = pct >= 0 ? "+" : "";
+    this.scoreBksEl.textContent = `${sign}${pct.toFixed(2)}% vs BKS (${BKS_AVERAGE.toFixed(1)})`;
+    this.scoreBksEl.style.color = pct > 0.05 ? "var(--red)" : pct < -0.05 ? "var(--green)" : "var(--text-dim)";
   }
 
   // Immediate, non-animated draw of one instance's route data.
