@@ -23,6 +23,7 @@ export interface LeaderboardEntry {
   agent_name: string;
   runs: number;
   improvements: number;
+  runs_since_improvement: number;
   // Best per-instance score the agent has achieved across feasible runs.
   // null when the agent has no feasible runs yet.
   best_score: number | null;

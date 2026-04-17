@@ -1,7 +1,7 @@
 import type { Panel, WSMessage, LeaderboardEntry } from "../types";
 import { getAgentColor } from "../lib/colors";
 
-type SortKey = "best_score" | "runs" | "improvements";
+type SortKey = "best_score" | "runs" | "improvements" | "runs_since_improvement";
 type SortDir = "asc" | "desc";
 
 // Default direction when a column is first clicked: lower-is-better for score,
@@ -10,6 +10,7 @@ const DEFAULT_DIR: Record<SortKey, SortDir> = {
   best_score: "asc",
   runs: "desc",
   improvements: "desc",
+  runs_since_improvement: "desc",
 };
 
 export class LeaderboardPanel implements Panel {
@@ -27,6 +28,7 @@ export class LeaderboardPanel implements Panel {
           <span class="lb-name">Agent</span>
           <button type="button" class="lb-runs lb-sortable" data-sort="runs">Runs<span class="lb-arrow"></span></button>
           <button type="button" class="lb-imp lb-sortable" data-sort="improvements">Imp.<span class="lb-arrow"></span></button>
+          <button type="button" class="lb-stag lb-sortable" data-sort="runs_since_improvement">Stag.<span class="lb-arrow"></span></button>
           <button type="button" class="lb-score lb-sortable" data-sort="best_score">Best score<span class="lb-arrow"></span></button>
         </div>
         <div class="leaderboard-list" id="leaderboard-list"></div>
@@ -118,11 +120,6 @@ export class LeaderboardPanel implements Panel {
       const sortVal = entry[this.sortKey];
       row.dataset.sortValue = sortVal === null ? "" : String(sortVal);
 
-      const rankClass =
-        rank === 1 ? "rank-gold" :
-        rank === 2 ? "rank-cyan" :
-        rank === 3 ? "rank-teal" : "";
-
       const color = getAgentColor(entry.agent_id);
 
       const prev = prevValues.get(entry.agent_id);
@@ -135,21 +132,16 @@ export class LeaderboardPanel implements Panel {
       const scoreText = entry.best_score === null ? "—" : entry.best_score.toFixed(1);
 
       row.innerHTML = `
-        <span class="lb-rank ${rankClass}">${rank}</span>
+        <span class="lb-rank">${rank}</span>
         <span class="lb-name">
           <span class="lb-dot" style="background:${color}"></span>
           ${entry.agent_name}
         </span>
         <span class="lb-runs">${entry.runs}</span>
         <span class="lb-imp">${entry.improvements}</span>
+        <span class="lb-stag${entry.runs_since_improvement >= 5 ? " lb-stag--alert" : ""}">${entry.runs_since_improvement}</span>
         <span class="lb-score ${improved ? "lb-score--improved" : ""}">${scoreText}</span>
       `;
-
-      if (rank <= 3) {
-        const accentColor = rank === 1 ? "var(--amber)" : rank === 2 ? "var(--cyan)" : "var(--teal)";
-        row.style.borderLeft = `2px solid ${accentColor}`;
-        row.style.boxShadow = `inset 4px 0 12px -4px ${accentColor}44`;
-      }
 
       this.list.appendChild(row);
     });

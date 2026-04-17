@@ -610,10 +610,6 @@ html, body {
   font-variant-numeric: tabular-nums;
 }
 
-.rank-gold  { color: var(--amber); }
-.rank-cyan  { color: var(--cyan); }
-.rank-teal  { color: var(--teal); }
-
 .lb-name {
   flex: 1;
   display: flex;
@@ -632,7 +628,8 @@ html, body {
 }
 
 .lb-runs,
-.lb-imp {
+.lb-imp,
+.lb-stag {
   width: 48px;
   text-align: right;
   color: var(--text-dim);
@@ -653,6 +650,10 @@ html, body {
   color: var(--green);
   text-shadow: 0 0 8px rgba(0, 230, 118, 0.3);
   animation: scorePulse 0.6s ease;
+}
+
+.lb-stag--alert {
+  color: #ff5252;
 }
 
 /* Sortable header buttons reuse the column widths above so columns line up

@@ -228,6 +228,7 @@ export class MockDataGenerator {
           agent_name: a.name,
           runs: a.experiments,
           improvements: a.improvements,
+          runs_since_improvement: 0,
           best_score: avg,
         }));
 
