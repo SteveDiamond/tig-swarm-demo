@@ -16,7 +16,9 @@ CREATE TABLE IF NOT EXISTS agents (
     status TEXT DEFAULT 'idle',
     experiments_completed INTEGER DEFAULT 0,
     best_score REAL,
-    last_served_branch_id TEXT
+    last_served_branch_id TEXT,
+    runs_since_improvement INTEGER DEFAULT 0,
+    improvements INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS hypotheses (
@@ -31,6 +33,7 @@ CREATE TABLE IF NOT EXISTS hypotheses (
     branch_agent_id TEXT,
     claimed_by TEXT,
     created_at TEXT NOT NULL,
+    target_best_experiment_id TEXT,
     FOREIGN KEY (agent_id) REFERENCES agents(id)
 );
 
@@ -106,6 +109,7 @@ CREATE INDEX IF NOT EXISTS idx_hyp_fingerprint ON hypotheses(fingerprint);
 CREATE INDEX IF NOT EXISTS idx_hyp_branch ON hypotheses(branch_agent_id);
 CREATE INDEX IF NOT EXISTS idx_agent_bests_score ON agent_bests(feasible, score);
 CREATE INDEX IF NOT EXISTS idx_msg_created ON messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_hyp_agent_target ON hypotheses(agent_id, target_best_experiment_id);
 """
 
 DEFAULT_CONFIG = {
@@ -129,6 +133,9 @@ async def init_db() -> None:
         for stmt in (
             "ALTER TABLE agents ADD COLUMN last_served_branch_id TEXT",
             "ALTER TABLE hypotheses ADD COLUMN branch_agent_id TEXT",
+            "ALTER TABLE agents ADD COLUMN runs_since_improvement INTEGER DEFAULT 0",
+            "ALTER TABLE agents ADD COLUMN improvements INTEGER DEFAULT 0",
+            "ALTER TABLE hypotheses ADD COLUMN target_best_experiment_id TEXT",
         ):
             try:
                 await db.execute(stmt)
@@ -310,25 +317,19 @@ async def get_all_agent_names(conn: aiosqlite.Connection) -> set[str]:
 async def compute_leaderboard(
     conn: aiosqlite.Connection,
 ) -> list[dict]:
-    # runs         = total experiments published by the agent (any feasibility)
-    # improvements = times this agent set a new global best (from best_history)
-    # best_score   = best per-instance average score this agent has ever
-    #                achieved. Scores are already per-instance averages
-    #                (computed by benchmark.py), so no division is needed.
-    #                Only feasible runs count — infeasible ones are ignored so
-    #                the value represents a real achievable score rather than
-    #                a penalty figure. NULL if the agent has no feasible runs.
+    # All counters are stored directly on the agents table and updated
+    # atomically by POST /api/iterations.  best_score comes from agent_bests.
     cursor = await conn.execute(
         """
         SELECT
             a.id   as agent_id,
             a.name as agent_name,
-            COUNT(e.id) as runs,
-            MIN(CASE WHEN e.feasible = 1 THEN e.score END) as best_score,
-            (SELECT COUNT(*) FROM best_history bh WHERE bh.agent_name = a.name) as improvements
+            a.experiments_completed as runs,
+            a.improvements as improvements,
+            a.runs_since_improvement as runs_since_improvement,
+            ab.score as best_score
         FROM agents a
-        LEFT JOIN experiments e ON e.agent_id = a.id
-        GROUP BY a.id
+        LEFT JOIN agent_bests ab ON ab.agent_id = a.id AND ab.feasible = 1
         ORDER BY best_score IS NULL, best_score ASC, a.name ASC
         """
     )
@@ -340,6 +341,7 @@ async def compute_leaderboard(
             "agent_name": row["agent_name"],
             "runs": row["runs"],
             "improvements": row["improvements"],
+            "runs_since_improvement": row["runs_since_improvement"],
             "best_score": row["best_score"],
         }
         for i, row in enumerate(rows)

@@ -2,7 +2,8 @@
 """Publish benchmark results to the swarm coordination server.
 
 Usage:
-    python3 scripts/benchmark.py 2>/dev/null | python3 scripts/publish.py AGENT_ID HYPOTHESIS_ID "notes"
+    python3 scripts/benchmark.py 2>/dev/null \
+      | python3 scripts/publish.py AGENT_ID "title" "description" strategy_tag "notes"
 """
 
 import json
@@ -15,20 +16,27 @@ ALGO_PATH = Path(__file__).parent.parent / "src/vehicle_routing/algorithm/mod.rs
 
 
 def main():
-    if len(sys.argv) < 3:
-        print("Usage: python3 scripts/publish.py <agent_id> <hypothesis_id> [notes]", file=sys.stderr)
+    if len(sys.argv) < 5:
+        print(
+            "Usage: python3 scripts/publish.py <agent_id> <title> <description> <strategy_tag> [notes]",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     agent_id = sys.argv[1]
-    hypothesis_id = sys.argv[2]
-    notes = sys.argv[3] if len(sys.argv) > 3 else ""
+    title = sys.argv[2]
+    description = sys.argv[3]
+    strategy_tag = sys.argv[4]
+    notes = sys.argv[5] if len(sys.argv) > 5 else ""
 
     bench = json.load(sys.stdin)
     code = ALGO_PATH.read_text()
 
     payload = {
         "agent_id": agent_id,
-        "hypothesis_id": hypothesis_id,
+        "title": title,
+        "description": description,
+        "strategy_tag": strategy_tag,
         "algorithm_code": code,
         "score": bench["score"],
         "feasible": bench["feasible"],
@@ -39,7 +47,7 @@ def main():
     }
 
     req = urllib.request.Request(
-        f"{SERVER}/api/experiments",
+        f"{SERVER}/api/iterations",
         data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"},
         method="POST",

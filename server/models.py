@@ -55,6 +55,29 @@ class ExperimentCreate(BaseModel):
     route_data: Optional[dict] = None
 
 
+class IterationCreate(BaseModel):
+    agent_id: str
+    title: str
+    description: str = ""
+    strategy_tag: Literal[
+        "construction",
+        "local_search",
+        "metaheuristic",
+        "constraint_relaxation",
+        "decomposition",
+        "hybrid",
+        "data_structure",
+        "other",
+    ] = "other"
+    algorithm_code: str = ""
+    score: float
+    feasible: bool = True
+    num_vehicles: int = 0
+    total_distance: float = 0.0
+    notes: str = ""
+    route_data: Optional[dict] = None
+
+
 class AdminAuth(BaseModel):
     admin_key: str
 
@@ -105,3 +128,14 @@ class ExperimentResponse(BaseModel):
     rank: int
     improvement_over_baseline_pct: float
     hypothesis_status_updated_to: Optional[str] = None
+
+
+class IterationResponse(BaseModel):
+    experiment_id: str
+    hypothesis_id: str
+    is_new_best: bool
+    beats_own_best: bool
+    rank: int
+    runs: int
+    improvements: int
+    runs_since_improvement: int
