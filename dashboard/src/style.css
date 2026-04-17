@@ -1014,3 +1014,124 @@ html, body {
   margin-left: 6px;
   font-size: 14px;
 }
+
+/* ══════════════════════════════════════════
+   WELCOME OVERLAY
+   ══════════════════════════════════════════ */
+
+.welcome-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 6, 8, 0.88);
+  backdrop-filter: blur(12px);
+}
+
+.welcome-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--cyan-30);
+  border-radius: 8px;
+  padding: 48px 44px;
+  text-align: center;
+  box-shadow: 0 0 80px rgba(0, 229, 255, 0.06);
+  max-width: 540px;
+  width: calc(100% - 32px);
+}
+
+.welcome-title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 36px;
+  color: var(--text-bright);
+  margin-bottom: 12px;
+}
+
+.welcome-subtitle {
+  font-size: 14px;
+  color: var(--text-mid);
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+.welcome-label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+.welcome-prompt {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  background: var(--bg-void);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.welcome-prompt code {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--cyan);
+  padding: 14px 16px;
+  text-align: left;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.welcome-copy-btn {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: var(--bg-elevated);
+  border: none;
+  border-left: 1px solid var(--border-subtle);
+  padding: 14px 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.2s, background 0.2s;
+}
+
+.welcome-copy-btn:hover {
+  color: var(--text-bright);
+  background: var(--bg-surface);
+}
+
+.welcome-copy-btn--copied {
+  color: var(--green) !important;
+}
+
+.welcome-hint {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+}
+
+@media (max-width: 500px) {
+  .welcome-card {
+    padding: 32px 20px;
+  }
+
+  .welcome-title {
+    font-size: 28px;
+  }
+
+  .welcome-prompt {
+    flex-direction: column;
+  }
+
+  .welcome-copy-btn {
+    border-left: none;
+    border-top: 1px solid var(--border-subtle);
+    padding: 12px;
+  }
+}

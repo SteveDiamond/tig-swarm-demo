@@ -1,4 +1,4 @@
-const REPO_URL = "https://github.com/SteveDiamond/tig-swarm-demo";
+const REPO_URL = "https://demo.discoveryatscale.com";
 
 let overlayEl: HTMLElement | null = null;
 let visible = false;

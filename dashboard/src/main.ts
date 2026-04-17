@@ -7,7 +7,7 @@ import {
   soundAgentJoined, soundHypothesisProposed, soundExperimentPublished,
   soundNewGlobalBest, startHeartbeat,
 } from "./lib/sounds";
-import { initQROverlay, toggleQR } from "./lib/qrcode";
+import { initWelcome, toggleWelcome } from "./lib/welcome";
 import { startReplay } from "./lib/replay";
 
 import { StatsPanel } from "./panels/stats";
@@ -198,13 +198,13 @@ async function loadInitialState(apiUrl: string) {
   }
 }
 
-// ── QR overlay ──
-initQROverlay();
+// ── Welcome overlay ──
+initWelcome();
 
 // ── Keyboard navigation ──
 document.addEventListener("keydown", (e) => {
   if (e.key === "2") window.location.href = "/ideas.html";
-  if (e.key === "q" || e.key === "Q") toggleQR();
+  if (e.key === "j" || e.key === "J") toggleWelcome();
   if (e.key === "r" || e.key === "R") startReplay(getApiUrl(), handleMessage);
 });
 
