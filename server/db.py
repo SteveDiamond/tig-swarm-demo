@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS knowledge (
 CREATE TABLE IF NOT EXISTS best_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     experiment_id TEXT NOT NULL,
+    agent_id TEXT,
     agent_name TEXT NOT NULL,
     score REAL NOT NULL,
     route_data TEXT,
@@ -136,6 +137,7 @@ async def init_db() -> None:
             "ALTER TABLE agents ADD COLUMN runs_since_improvement INTEGER DEFAULT 0",
             "ALTER TABLE agents ADD COLUMN improvements INTEGER DEFAULT 0",
             "ALTER TABLE hypotheses ADD COLUMN target_best_experiment_id TEXT",
+            "ALTER TABLE best_history ADD COLUMN agent_id TEXT",
         ):
             try:
                 await db.execute(stmt)

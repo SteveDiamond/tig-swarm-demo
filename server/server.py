@@ -566,9 +566,9 @@ async def create_iteration(req: IterationCreate):
         if is_new_best:
             await conn.execute(
                 """INSERT INTO best_history
-                   (experiment_id, agent_name, score, route_data, created_at)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (exp_id, agent_name, req.score, route_data_json, timestamp),
+                   (experiment_id, agent_id, agent_name, score, route_data, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (exp_id, req.agent_id, agent_name, req.score, route_data_json, timestamp),
             )
 
         await conn.commit()
@@ -810,8 +810,8 @@ async def create_experiment(req: ExperimentCreate):
 
         if is_new_best:
             await conn.execute(
-                "INSERT INTO best_history (experiment_id, agent_name, score, route_data, created_at) VALUES (?, ?, ?, ?, ?)",
-                (exp_id, agent_name, req.score, route_data_json, timestamp),
+                "INSERT INTO best_history (experiment_id, agent_id, agent_name, score, route_data, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (exp_id, req.agent_id, agent_name, req.score, route_data_json, timestamp),
             )
 
         # Prefer this experiment's own route_data; if it wasn't provided,
@@ -981,6 +981,7 @@ async def get_replay():
     return [
         {
             "experiment_id": r["experiment_id"],
+            "agent_id": r.get("agent_id"),
             "agent_name": r["agent_name"],
             "score": r["score"],
             "route_data": json.loads(r["route_data"]) if r["route_data"] else None,
