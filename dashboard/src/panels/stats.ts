@@ -16,6 +16,8 @@ export class StatsPanel implements Panel {
           <span class="stats-title">Automated Discovery</span>
           <span id="ws-status" class="ws-status connected">LIVE</span>
           <a href="/ideas.html" class="stats-nav-link">Ideas &rarr;</a>
+          <a href="/diversity.html" class="stats-nav-link">Diversity &rarr;</a>
+          <a href="/benchmark.html" class="stats-nav-link">Benchmark &rarr;</a>
         </div>
         <div class="stats-chips">
           <div class="stat-chip" id="stat-agents">
