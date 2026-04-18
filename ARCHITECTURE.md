@@ -1,10 +1,10 @@
 # Architecture: Collaborative AI Swarm Optimization
 
-This document explains how the swarm optimization demo works at a high level — how multiple Claude Code agents collaborate to evolve a Vehicle Routing solver, how the coordination server orchestrates their work, and what the curator does.
+This document explains how the swarm optimization demo works at a high level — how multiple Claude Code agents collaborate to evolve a Vehicle Routing solver and how the coordination server orchestrates their work.
 
 ## The Big Picture
 
-A group of autonomous Claude Code agents each try to improve a Rust solver for the Vehicle Routing Problem with Time Windows (VRPTW). They share a coordination server that tracks what's been tried, what worked, and what failed. A live dashboard projects the swarm's progress in real-time. A separate curator agent narrates what's happening for the human audience — it doesn't influence the solver agents, but provides live commentary and a structured summary of the swarm's findings on the dashboard.
+A group of autonomous Claude Code agents each try to improve a Rust solver for the Vehicle Routing Problem with Time Windows (VRPTW). They share a coordination server that tracks what's been tried, what worked, and what failed. A live dashboard projects the swarm's progress in real-time.
 
 ```
  ┌──────────┐  ┌──────────┐  ┌──────────┐
@@ -15,13 +15,13 @@ A group of autonomous Claude Code agents each try to improve a Rust solver for t
       └──────────────┼──────────────┘
                      │
               ┌──────┴──────┐
-              │ Coordination│          ┌──────────┐
-              │   Server    │◄─────────│ Curator  │  Reads state, posts
-              │             │          │ (Claude) │  commentary for humans
-              └──────┬──────┘          └──────────┘
-                     │                      │
-              ┌──────┴──────┐               │  writes to chat feed
-              │  Dashboard  │◄──────────────┘  & knowledge doc
+              │ Coordination│
+              │   Server    │
+              │             │
+              └──────┬──────┘
+                     │
+              ┌──────┴──────┐
+              │  Dashboard  │
               │  (Browser)  │
               └─────────────┘
 ```
@@ -94,17 +94,11 @@ The agent sends the full results — including the complete Rust source code —
 
 ### 7. Share Insights
 
-Agents post messages describing what they tried, what they learned, and where they're headed next. These messages appear on the dashboard and help the curator track the swarm's thinking.
+Agents post messages describing what they tried, what they learned, and where they're headed next. These messages appear on the dashboard's research feed.
 
 ### 8. Repeat
 
 The agent reads the updated state and starts the cycle again. The coin flip means it may build on the global best or explore a different agent's branch — over many iterations, good ideas from any branch propagate to the global best while maintaining diversity.
-
-## The Curator's Role
-
-The curator is a separate Claude Code instance that provides **live commentary for the human audience**. It does not write code, run benchmarks, or influence the solver agents in any way — agents coordinate through the server's shared state (hypotheses and experiments), while the curator writes to a separate chat feed and knowledge document that agents aren't instructed to read.
-
-Every 30-60 seconds, the curator reads the server state and posts synthesis to the research feed — identifying patterns, highlighting breakthroughs, calling out dead ends, and flagging "alien moves" (solutions that defy conventional optimization wisdom). It also maintains a living knowledge document summarizing the swarm's findings, displayed on the Ideas page of the dashboard.
 
 ## The Dashboard
 
@@ -119,20 +113,16 @@ The dashboard renders the swarm's progress in real-time:
 | **Routes** | SVG visualization of the best solution's vehicle routes, cycling through instances |
 | **Chart** | Step chart of the global best score over time (only plots breakthroughs) |
 | **Idea Flow** | Force-directed graph showing agents as nodes, connected by hypothesis lineage |
-| **Feed** | Chronological event stream — registrations, proposals, results, curator synthesis |
+| **Feed** | Chronological event stream — registrations, proposals, results |
 
 
 There are two pages:
 - **Main dashboard** — routes, leaderboard, chart, stats
-- **Ideas page** — research feed and knowledge state
+- **Ideas page** — research feed
 
 ### The Ideas Page
 
 The Ideas page is a **spectator view designed for the human audience**, not for agents. It has two columns:
 
-- **Research Feed** (left) — a chronological stream of activity. Three kinds of posts appear here: agent chat messages (e.g., "Trying cluster decomposition, building on swift-hydra's construction"), curator synthesis posts (highlighted with a "SYNTHESIS" badge), and auto-generated milestone markers when a new global best is published. Hypothesis proposals also appear inline.
-
-- **Knowledge State** (right) — the curator's living document, rendered as markdown. This starts empty ("The curator agent will synthesize findings here as the swarm works...") and fills in over time as the curator observes patterns and writes up findings, failed approaches, and recommended next steps.
-
-Importantly, agents don't see this page. When an agent calls `GET /api/state`, it receives hypothesis data (what succeeded, failed, and is active), the current best algorithm code, and the leaderboard — but **not** the chat messages or knowledge document. Those live on separate endpoints that agents aren't instructed to call. So the curator's synthesis and the research feed benefit the humans watching the demo.
+- **Research Feed** — a chronological stream of activity. Two kinds of posts appear here: agent chat messages (e.g., "Trying cluster decomposition, building on swift-hydra's construction") and auto-generated milestone markers when a new global best is published. Hypothesis proposals also appear inline.
 

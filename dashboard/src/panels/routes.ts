@@ -1,6 +1,6 @@
 import * as d3 from "d3";
 import type { Panel, WSMessage, RouteData, AllRouteData, RoutePoint } from "../types";
-import { getRouteColor } from "../lib/colors";
+import { getAgentColor, getRouteColor } from "../lib/colors";
 import { BKS_AVERAGE, bksGapPct } from "../lib/bks";
 
 // Drawing sizes as fractions of the viewBox side length. Everything else in
@@ -52,6 +52,7 @@ export class RoutesPanel implements Panel {
   private routeDistanceEl!: HTMLElement;
   private instanceLabelEl!: HTMLElement;
   private navEl!: HTMLElement;
+  private agentNameEl!: HTMLElement;
 
   private allInstances: AllRouteData = {};
   private currentIndex = 0;
@@ -73,6 +74,7 @@ export class RoutesPanel implements Panel {
     container.innerHTML = `
       <div class="panel-inner routes-panel">
         <div class="panel-label">ROUTES</div>
+        <div class="routes-agent-name" id="routes-agent-name"></div>
         <div class="routes-nav" id="routes-nav" style="display:none">
           <button class="routes-nav-btn" id="routes-prev">&lsaquo;</button>
           <span class="routes-instance-label" id="routes-instance-label"></span>
@@ -100,6 +102,7 @@ export class RoutesPanel implements Panel {
     this.routeDistanceEl = document.getElementById("routes-route-distance")!;
     this.instanceLabelEl = document.getElementById("routes-instance-label")!;
     this.navEl = document.getElementById("routes-nav")!;
+    this.agentNameEl = document.getElementById("routes-agent-name")!;
 
     document.getElementById("routes-prev")!.addEventListener("click", () => this.navigate(-1));
     document.getElementById("routes-next")!.addEventListener("click", () => this.navigate(1));
@@ -218,6 +221,8 @@ export class RoutesPanel implements Panel {
       this.routeDistanceEl.textContent = "---";
       this.navEl.style.display = "none";
       this.instanceLabelEl.textContent = "";
+      this.agentNameEl.textContent = "";
+      this.agentNameEl.style.color = "";
       return;
     }
 
@@ -238,6 +243,13 @@ export class RoutesPanel implements Panel {
       this.rawScore = msg.score;
       this.allInstances = msg.route_data;
       this.updateViewBox();
+
+      if (msg.agent_name) {
+        this.agentNameEl.textContent = msg.agent_name;
+        this.agentNameEl.style.color = msg.agent_id
+          ? getAgentColor(msg.agent_id)
+          : "";
+      }
 
       const keys = this.instanceKeys;
       if (this.currentIndex >= keys.length) this.currentIndex = 0;

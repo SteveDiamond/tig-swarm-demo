@@ -91,12 +91,7 @@ class MessageCreate(BaseModel):
     agent_id: Optional[str] = None
     agent_name: str
     content: str
-    msg_type: Literal["agent", "synthesis", "milestone"] = "agent"
-
-
-class KnowledgeUpdate(BaseModel):
-    content: str
-    updated_by: str = ""
+    msg_type: Literal["agent", "milestone"] = "agent"
 
 
 # ── Response models ──

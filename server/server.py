@@ -12,7 +12,7 @@ from pathlib import Path
 
 from models import (
     RegisterRequest, HeartbeatRequest, HypothesisCreate, ExperimentCreate,
-    IterationCreate, AdminBroadcast, AdminAuth, MessageCreate, KnowledgeUpdate,
+    IterationCreate, AdminBroadcast, AdminAuth, MessageCreate,
     AgentResponse, HypothesisResponse, DuplicateResponse,
     ExperimentResponse, IterationResponse, new_id, improvement_pct,
 )
@@ -565,6 +565,12 @@ async def create_iteration(req: IterationCreate):
                 ((prev_best["score"] - req.score) / prev_best["score"]) * 100,
                 6,
             )
+        delta_vs_own_best_pct: float | None = None
+        if prev_agent_best is not None and prev_agent_best["score"] > 0:
+            delta_vs_own_best_pct = round(
+                ((prev_agent_best["score"] - req.score) / prev_agent_best["score"]) * 100,
+                6,
+            )
         incremental_pct = delta_vs_best_pct if is_new_best else None
 
         if is_new_best:
@@ -604,9 +610,13 @@ async def create_iteration(req: IterationCreate):
         "feasible": req.feasible,
         "improvement_pct": imp,
         "delta_vs_best_pct": delta_vs_best_pct,
+        "beats_own_best": beats_own_best,
+        "delta_vs_own_best_pct": delta_vs_own_best_pct,
         "num_instances": num_instances,
         "is_new_best": is_new_best,
         "hypothesis_id": hyp_id,
+        "strategy_tag": req.strategy_tag,
+        "title": req.title,
         "notes": req.notes,
         "timestamp": timestamp,
     })
@@ -808,6 +818,11 @@ async def create_experiment(req: ExperimentCreate):
             delta_vs_best_pct = round(
                 ((prev_best["score"] - req.score) / prev_best["score"]) * 100, 6
             )
+        delta_vs_own_best_pct: float | None = None
+        if prev_agent_best is not None and prev_agent_best["score"] > 0:
+            delta_vs_own_best_pct = round(
+                ((prev_agent_best["score"] - req.score) / prev_agent_best["score"]) * 100, 6
+            )
         # new_global_best only fires on an actual improvement, so we reuse
         # the same positive number.
         incremental_pct = delta_vs_best_pct if is_new_best else None
@@ -850,6 +865,21 @@ async def create_experiment(req: ExperimentCreate):
             "timestamp": timestamp,
         })
 
+    # Strategy tag and title come from the hypothesis; null when the legacy
+    # flow was called without one (seed-era experiments).
+    strategy_tag = None
+    hyp_title = None
+    if req.hypothesis_id:
+        async with db.connect() as conn:
+            cursor = await conn.execute(
+                "SELECT strategy_tag, title FROM hypotheses WHERE id = ?",
+                (req.hypothesis_id,),
+            )
+            hyp_row = await cursor.fetchone()
+            if hyp_row:
+                strategy_tag = hyp_row["strategy_tag"]
+                hyp_title = hyp_row["title"]
+
     await manager.broadcast({
         "type": "experiment_published",
         "experiment_id": exp_id,
@@ -859,9 +889,13 @@ async def create_experiment(req: ExperimentCreate):
         "feasible": req.feasible,
         "improvement_pct": imp,
         "delta_vs_best_pct": delta_vs_best_pct,
+        "beats_own_best": beats_own_best,
+        "delta_vs_own_best_pct": delta_vs_own_best_pct,
         "num_instances": num_instances,
         "is_new_best": is_new_best,
         "hypothesis_id": req.hypothesis_id,
+        "strategy_tag": strategy_tag,
+        "title": hyp_title,
         "notes": req.notes,
         "timestamp": timestamp,
     })
@@ -940,38 +974,6 @@ async def list_messages(limit: int = 50):
     return rows
 
 
-# ── Knowledge (curator's living document) ──
-
-@app.put("/api/knowledge")
-async def update_knowledge(req: KnowledgeUpdate):
-    timestamp = now()
-    async with db.connect() as conn:
-        await conn.execute(
-            """INSERT INTO knowledge (id, content, updated_at, updated_by) VALUES (1, ?, ?, ?)
-               ON CONFLICT(id) DO UPDATE SET content = ?, updated_at = ?, updated_by = ?""",
-            (req.content, timestamp, req.updated_by, req.content, timestamp, req.updated_by),
-        )
-        await conn.commit()
-
-    await manager.broadcast({
-        "type": "knowledge_updated",
-        "content": req.content,
-        "updated_by": req.updated_by,
-        "timestamp": timestamp,
-    })
-
-    return {"updated_at": timestamp}
-
-
-@app.get("/api/knowledge")
-async def get_knowledge():
-    async with db.connect() as conn:
-        cursor = await conn.execute("SELECT * FROM knowledge WHERE id = 1")
-        row = await cursor.fetchone()
-    if row:
-        return {"content": row["content"], "updated_at": row["updated_at"], "updated_by": row["updated_by"]}
-    return {"content": "", "updated_at": "", "updated_by": ""}
-
 
 # ── Diversity ──
 
@@ -1042,6 +1044,68 @@ async def get_replay():
     ]
 
 
+@app.get("/api/top_scores")
+async def get_top_scores(limit: int = 20):
+    # Top-N feasible iterations across the whole swarm, joined to the
+    # proposing hypothesis for its strategy tag + title. Same agent can
+    # appear multiple times — each row is one iteration, not a per-agent
+    # roll-up. title / strategy_tag come back null when the experiment has
+    # no associated hypothesis (legacy/seed rows).
+    limit = max(1, min(limit, 100))
+    async with db.connect() as conn:
+        cursor = await conn.execute(
+            """SELECT e.id AS experiment_id, e.score, e.created_at,
+                      e.agent_id, a.name AS agent_name,
+                      h.strategy_tag, h.title
+               FROM experiments e
+               LEFT JOIN hypotheses h ON h.id = e.hypothesis_id
+               LEFT JOIN agents a ON a.id = e.agent_id
+               WHERE e.feasible = 1
+               ORDER BY e.score ASC
+               LIMIT ?""",
+            (limit,),
+        )
+        rows = [dict(row) for row in await cursor.fetchall()]
+    return {"entries": rows, "limit": limit}
+
+
+@app.get("/api/agent_experiments")
+async def get_agent_experiments(agent_id: str):
+    # Per-agent full attempt history for the personal progress chart.
+    # Returns every experiment (improvement or not, feasible or not) so the
+    # dashboard can render a step plot of the agent's whole journey.
+    async with db.connect() as conn:
+        ag = await conn.execute(
+            "SELECT id, name, registered_at FROM agents WHERE id = ?",
+            (agent_id,),
+        )
+        agent_row = await ag.fetchone()
+        if agent_row is None:
+            return {"agent_id": agent_id, "agent_name": None,
+                    "registered_at": None, "experiments": []}
+
+        cursor = await conn.execute(
+            "SELECT score, feasible, created_at FROM experiments "
+            "WHERE agent_id = ? ORDER BY created_at ASC",
+            (agent_id,),
+        )
+        rows = await cursor.fetchall()
+
+    return {
+        "agent_id": agent_id,
+        "agent_name": agent_row["name"],
+        "registered_at": agent_row["registered_at"],
+        "experiments": [
+            {
+                "score": r["score"],
+                "feasible": bool(r["feasible"]),
+                "created_at": r["created_at"],
+            }
+            for r in rows
+        ],
+    }
+
+
 # ── Admin endpoints ──
 
 @app.post("/api/admin/broadcast")
@@ -1064,7 +1128,6 @@ async def admin_reset(req: AdminAuth):
         await conn.execute("DELETE FROM hypotheses")
         await conn.execute("DELETE FROM agents")
         await conn.execute("DELETE FROM messages")
-        await conn.execute("DELETE FROM knowledge WHERE id = 1")
         # agent_bests is derived data — without this, stale branch rows
         # point to just-deleted agent ids, corrupting global-best
         # computation and the /api/state coin flip on the next run.

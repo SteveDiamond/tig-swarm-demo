@@ -5,7 +5,6 @@ import { counterTween, pulseGlow } from "../lib/animate";
 export class StatsPanel implements Panel {
   private agentsEl!: HTMLElement;
   private experimentsEl!: HTMLElement;
-  private hypothesesEl!: HTMLElement;
   private improvementEl!: HTMLElement;
   private heroEl!: HTMLElement;
 
@@ -27,10 +26,6 @@ export class StatsPanel implements Panel {
             <span class="stat-label">EXPERIMENTS</span>
             <span class="stat-value" id="stat-experiments-val">0</span>
           </div>
-          <div class="stat-chip" id="stat-hypotheses">
-            <span class="stat-label">HYPOTHESES</span>
-            <span class="stat-value" id="stat-hypotheses-val">0</span>
-          </div>
           <div class="stat-chip" id="stat-improvement">
             <span class="stat-label">IMPROVEMENT</span>
             <span class="stat-value" id="stat-improvement-val">0%</span>
@@ -42,7 +37,6 @@ export class StatsPanel implements Panel {
 
     this.agentsEl = document.getElementById("stat-agents-val")!;
     this.experimentsEl = document.getElementById("stat-experiments-val")!;
-    this.hypothesesEl = document.getElementById("stat-hypotheses-val")!;
     this.improvementEl = document.getElementById("stat-improvement-val")!;
     this.heroEl = document.getElementById("stat-hero")!;
 
@@ -52,7 +46,6 @@ export class StatsPanel implements Panel {
     if (msg.type === "reset") {
       this.agentsEl.textContent = "0";
       this.experimentsEl.textContent = "0";
-      this.hypothesesEl.textContent = "0";
       this.improvementEl.textContent = "0%";
       this.improvementEl.style.color = "";
       this.heroEl.textContent = "";
@@ -63,7 +56,6 @@ export class StatsPanel implements Panel {
     if (msg.type === "stats_update") {
       counterTween(this.agentsEl, msg.active_agents);
       counterTween(this.experimentsEl, msg.total_experiments);
-      counterTween(this.hypothesesEl, msg.hypotheses_count);
 
       // improvement_pct is improvement-positive (positive = score dropped).
       // We display it as a score change: an improvement of 5% shows "-5.0%"

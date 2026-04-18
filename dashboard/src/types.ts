@@ -41,7 +41,6 @@ export type WSMessage =
   | LeaderboardUpdate
   | StatsUpdate
   | ChatMessage
-  | KnowledgeUpdated
   | AdminBroadcastMsg
   | ResetMsg;
 
@@ -92,9 +91,19 @@ export interface ExperimentPublished {
   // (improvement), negative = score rose (regression). Null when there
   // is no previous best.
   delta_vs_best_pct: number | null;
+  // True when this iteration improved the publishing agent's own previous
+  // best (not necessarily the global best).
+  beats_own_best?: boolean;
+  // % improvement vs the agent's own previous best. Positive = score
+  // dropped (improvement). Null when the agent had no prior best.
+  delta_vs_own_best_pct?: number | null;
   num_instances: number;
   is_new_best: boolean;
   hypothesis_id: string | null;
+  // Present for iterations published via /api/iterations; null for legacy
+  // /api/experiments posts without a hypothesis_id.
+  strategy_tag?: string | null;
+  title?: string | null;
   notes: string;
   timestamp: string;
 }
@@ -139,14 +148,7 @@ export interface ChatMessage {
   agent_name: string;
   agent_id: string | null;
   content: string;
-  msg_type: "agent" | "synthesis" | "milestone";
-  timestamp: string;
-}
-
-export interface KnowledgeUpdated {
-  type: "knowledge_updated";
-  content: string;
-  updated_by: string;
+  msg_type: "agent" | "milestone";
   timestamp: string;
 }
 

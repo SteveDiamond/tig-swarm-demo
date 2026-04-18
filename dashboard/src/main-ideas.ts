@@ -3,6 +3,7 @@ import { initParticles } from "./lib/particles";
 import { SwarmWebSocket } from "./lib/websocket";
 import { MockDataGenerator } from "./mock";
 import { IdeasTree } from "./panels/ideas-tree";
+import { StrategyLeaderboardPanel } from "./panels/strategy-leaderboard";
 import type { WSMessage } from "./types";
 
 // ── Config ──
@@ -29,8 +30,13 @@ const root = document.getElementById("ideas-root")!;
 const ideasTree = new IdeasTree();
 ideasTree.init(root);
 
+const strategyLb = new StrategyLeaderboardPanel();
+const strategyMount = document.getElementById("strategy-lb-mount");
+if (strategyMount) strategyLb.init(strategyMount);
+
 function handleMessage(msg: WSMessage) {
   ideasTree.handleMessage(msg);
+  strategyLb.handleMessage(msg);
 }
 
 // ── Keyboard navigation ──
@@ -78,11 +84,7 @@ async function loadInitialState(apiUrl: string) {
 
     console.log(`[Ideas] Loaded ${allHyps.length} hypotheses`);
 
-    // Load messages + knowledge in parallel
-    const [msgRes, knowRes] = await Promise.all([
-      fetch(`${apiUrl}/api/messages?limit=50`),
-      fetch(`${apiUrl}/api/knowledge`),
-    ]);
+    const msgRes = await fetch(`${apiUrl}/api/messages?limit=50`);
 
     if (msgRes.ok) {
       const messages = await msgRes.json();
@@ -95,18 +97,6 @@ async function loadInitialState(apiUrl: string) {
           content: m.content,
           msg_type: m.msg_type,
           timestamp: m.created_at,
-        });
-      }
-    }
-
-    if (knowRes.ok) {
-      const knowledge = await knowRes.json();
-      if (knowledge.content) {
-        handleMessage({
-          type: "knowledge_updated",
-          content: knowledge.content,
-          updated_by: knowledge.updated_by,
-          timestamp: knowledge.updated_at,
         });
       }
     }

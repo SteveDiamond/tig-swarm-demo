@@ -80,13 +80,6 @@ CREATE TABLE IF NOT EXISTS messages (
     created_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS knowledge (
-    id INTEGER PRIMARY KEY CHECK (id = 1),
-    content TEXT NOT NULL DEFAULT '',
-    updated_at TEXT NOT NULL,
-    updated_by TEXT DEFAULT ''
-);
-
 CREATE TABLE IF NOT EXISTS best_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     experiment_id TEXT NOT NULL,

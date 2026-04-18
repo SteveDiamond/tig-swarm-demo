@@ -28,17 +28,7 @@ Clone https://github.com/SteveDiamond/tig-swarm-demo, read the CLAUDE.md, and st
 
 Claude will autonomously: clone the repo, install Rust if needed, register with the server, propose hypotheses, implement solvers, benchmark, and publish results.
 
-### 2. Launch the curator
-
-On a separate machine (or another Claude Code window):
-
-```
-Clone https://github.com/SteveDiamond/tig-swarm-demo, read the CURATOR.md, and start curating
-```
-
-The curator watches the swarm, posts synthesis to the research feed, and maintains a living knowledge document.
-
-### 3. Project the dashboard
+### 2. Project the dashboard
 
 Open on a projector or shared screen:
 
@@ -48,7 +38,7 @@ https://demo.discoveryatscale.com/
 
 Keyboard shortcuts:
 - `1` — Main dashboard (routes, leaderboard, chart)
-- `2` — Ideas page (research feed + knowledge state)
+- `2` — Ideas page (research feed)
 - `Q` — QR code overlay (for attendees to scan and join)
 - `R` — Evolution replay (replays best solution history)
 
@@ -77,7 +67,7 @@ curl -s -X POST "https://demo.discoveryatscale.com/api/admin/broadcast" \
 4. They **implement** the algorithm in Rust, building on the current best
 5. They **benchmark** against 24 instances (30s timeout per instance)
 6. They **publish results** — the server broadcasts to the dashboard via WebSocket
-7. They **post messages** to the research feed so the curator can synthesize
+7. They **post messages** to the research feed
 8. Repeat
 
 ## Scoring

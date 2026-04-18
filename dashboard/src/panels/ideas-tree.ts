@@ -7,7 +7,7 @@ interface FeedItem {
   agentName: string;
   agentId: string;
   content: string;
-  msgType: "agent" | "synthesis" | "milestone";
+  msgType: "agent" | "milestone";
   timestamp: string;
 }
 
@@ -15,8 +15,6 @@ const MAX_FEED_ITEMS = 40;
 
 export class IdeasTree {
   private feedEl!: HTMLElement;
-  private knowledgeEl!: HTMLElement;
-  private knowledgeEmptyEl!: HTMLElement;
   private feedItems: HTMLElement[] = [];
   private statsEl!: HTMLElement;
   private hypothesisCount = 0;
@@ -43,15 +41,7 @@ export class IdeasTree {
             <div class="ideas-col-label">RESEARCH FEED</div>
             <div class="ideas-feed" id="ideas-feed"></div>
           </div>
-          <div class="ideas-knowledge-col">
-            <div class="ideas-col-label">KNOWLEDGE STATE</div>
-            <div class="ideas-knowledge" id="ideas-knowledge">
-              <div class="ideas-knowledge-empty" id="ideas-knowledge-empty">
-                <div class="knowledge-empty-icon">&#9671;</div>
-                <div class="knowledge-empty-text">The curator agent will synthesize findings here as the swarm works...</div>
-              </div>
-            </div>
-          </div>
+          <div class="ideas-right-col" id="strategy-lb-mount"></div>
         </div>
 
         <div class="ideas-stats" id="ideas-stats"></div>
@@ -59,8 +49,6 @@ export class IdeasTree {
     `;
 
     this.feedEl = document.getElementById("ideas-feed")!;
-    this.knowledgeEl = document.getElementById("ideas-knowledge")!;
-    this.knowledgeEmptyEl = document.getElementById("ideas-knowledge-empty")!;
     this.statsEl = document.getElementById("ideas-stats")!;
   }
 
@@ -73,13 +61,6 @@ export class IdeasTree {
       this.succeededCount = 0;
       this.failedCount = 0;
       this.messageCount = 0;
-      this.knowledgeEl.innerHTML = `
-        <div class="ideas-knowledge-empty" id="ideas-knowledge-empty">
-          <div class="knowledge-empty-icon">&#9671;</div>
-          <div class="knowledge-empty-text">The curator agent will synthesize findings here as the swarm works...</div>
-        </div>
-      `;
-      this.knowledgeEmptyEl = document.getElementById("ideas-knowledge-empty")!;
       this.updateStats();
       return;
     }
@@ -114,26 +95,46 @@ export class IdeasTree {
         if (msg.new_status === "failed") this.failedCount++;
         break;
 
-      case "experiment_published":
+      case "experiment_published": {
+        // Three outcomes: new global best → milestone with own + global %s;
+        // beats own best but not global → lightweight "improvement" post;
+        // no improvement → skip (research feed stays narrative-focused).
+        const fmtPct = (p: number | null | undefined): string => {
+          if (p == null) return "";
+          const sign = p >= 0 ? "-" : "+";
+          return `${sign}${Math.abs(p).toFixed(2)}%`;
+        };
+
         if (msg.is_new_best) {
-          // improvement_pct is improvement-positive; display as score change
-          // so an improvement of 3.2% reads "-3.2%".
-          const scoreChange = -msg.improvement_pct;
-          const sign = scoreChange >= 0 ? "+" : "";
+          const ownPart = msg.delta_vs_own_best_pct != null
+            ? ` (${fmtPct(msg.delta_vs_own_best_pct)} own)`
+            : "";
+          const globalPart = msg.delta_vs_best_pct != null
+            ? ` and NEW GLOBAL BEST (${fmtPct(msg.delta_vs_best_pct)} vs global)`
+            : " and NEW GLOBAL BEST";
           this.addFeedItem({
             id: msg.experiment_id,
             agentName: msg.agent_name,
             agentId: msg.agent_id,
-            content: `NEW BEST: Score ${msg.score.toFixed(0)} (${sign}${scoreChange.toFixed(1)}%)`,
+            content: `Improvement — Score ${msg.score.toFixed(1)}${ownPart}${globalPart}`,
             msgType: "milestone",
+            timestamp: msg.timestamp,
+          });
+        } else if (msg.beats_own_best === true) {
+          const ownPart = msg.delta_vs_own_best_pct != null
+            ? ` (${fmtPct(msg.delta_vs_own_best_pct)})`
+            : "";
+          this.addFeedItem({
+            id: msg.experiment_id,
+            agentName: msg.agent_name,
+            agentId: msg.agent_id,
+            content: `Improvement — Score ${msg.score.toFixed(1)}${ownPart}`,
+            msgType: "agent",
             timestamp: msg.timestamp,
           });
         }
         break;
-
-      case "knowledge_updated":
-        this.renderKnowledge(msg.content, msg.updated_by);
-        break;
+      }
     }
 
     this.updateStats();
@@ -146,16 +147,7 @@ export class IdeasTree {
     const agentColor = getAgentColor(item.agentId || item.agentName);
     const time = formatTime(item.timestamp);
 
-    if (item.msgType === "synthesis") {
-      el.innerHTML = `
-        <div class="feed-post-header">
-          <span class="feed-post-badge synthesis-badge">SYNTHESIS</span>
-          <span class="feed-post-time">${time}</span>
-        </div>
-        <div class="feed-post-content synthesis-content">${this.renderMarkdown(item.content)}</div>
-        <div class="feed-post-author">— ${item.agentName}</div>
-      `;
-    } else if (item.msgType === "milestone") {
+    if (item.msgType === "milestone") {
       el.innerHTML = `
         <div class="feed-post-header">
           <span class="feed-post-badge milestone-badge">&#9733; MILESTONE</span>
@@ -178,7 +170,6 @@ export class IdeasTree {
       `;
     }
 
-    // Animate in
     el.style.opacity = "0";
     el.style.transform = "translateY(-16px)";
     this.feedEl.prepend(el);
@@ -190,42 +181,10 @@ export class IdeasTree {
 
     this.feedItems.unshift(el);
 
-    // Cleanup old items
     while (this.feedItems.length > MAX_FEED_ITEMS) {
       const old = this.feedItems.pop()!;
       old.remove();
     }
-  }
-
-  private renderKnowledge(content: string, updatedBy: string) {
-    this.knowledgeEmptyEl.style.display = "none";
-    // Render markdown-ish content (## headers, bullet lists, bold)
-    const html = this.renderMarkdown(content);
-    this.knowledgeEl.innerHTML = `
-      <div class="knowledge-doc">${html}</div>
-      <div class="knowledge-meta">Updated by ${updatedBy} at ${formatTime(new Date().toISOString())}</div>
-    `;
-
-    // Brief glow effect on update
-    this.knowledgeEl.style.boxShadow = "inset 0 0 30px rgba(0, 229, 255, 0.05)";
-    setTimeout(() => { this.knowledgeEl.style.boxShadow = ""; }, 2000);
-  }
-
-  private renderMarkdown(text: string): string {
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      // ## Headers
-      .replace(/^## (.+)$/gm, '<h3 class="knowledge-h2">$1</h3>')
-      .replace(/^### (.+)$/gm, '<h4 class="knowledge-h3">$1</h4>')
-      // Bold
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      // Bullet lists
-      .replace(/^- (.+)$/gm, '<div class="knowledge-bullet">$1</div>')
-      // Line breaks
-      .replace(/\n\n/g, '<div class="knowledge-gap"></div>')
-      .replace(/\n/g, "<br>");
   }
 
   private updateStats() {

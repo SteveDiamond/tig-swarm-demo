@@ -47,25 +47,41 @@ export class FeedPanel implements Panel {
         eventType = "hypothesis_proposed";
         break;
       case "experiment_published": {
-        // Score is already a per-instance average from the server, matching
-        // the leaderboard / routes panel. delta_vs_best_pct from the server
-        // is *improvement-positive* (positive = score dropped), but the feed
-        // shows the *score change* so the sign matches the direction of the
-        // score: an improvement of 5% displays as "-5%" in green, a 5%
-        // regression displays as "+5%" in red.
-        const delta = msg.delta_vs_best_pct;
-        let deltaStr = "";
-        if (delta != null) {
-          const scoreChange = -delta;
+        // Three outcomes:
+        //   1. beats own best AND new global best → show both %s
+        //   2. beats own best only → show own-best %
+        //   3. no improvement → just the score
+        // Server deltas are improvement-positive (positive = score dropped);
+        // we render them with the score-change sign convention ("-5%" green
+        // for improvement, "+5%" red for regression) so the sign matches the
+        // direction the score moved.
+        const fmtDelta = (d: number | null | undefined): string => {
+          if (d == null) return "";
+          const scoreChange = -d;
           const sign = scoreChange >= 0 ? "+" : "";
-          const color = delta > 0 ? "var(--green)" : delta < 0 ? "var(--red)" : "var(--text-dim)";
-          deltaStr = ` (<span style="color:${color}">${sign}${scoreChange.toFixed(6)}%</span>)`;
-        }
+          const color = d > 0 ? "var(--green)" : d < 0 ? "var(--red)" : "var(--text-dim)";
+          return `<span style="color:${color}">${sign}${scoreChange.toFixed(4)}%</span>`;
+        };
+
+        const ownDelta = msg.delta_vs_own_best_pct;
+        const globalDelta = msg.delta_vs_best_pct;
+        const beatsOwn = msg.beats_own_best === true;
+
         if (msg.is_new_best) {
-          text = `<b>${msg.agent_name}</b> improved &mdash; ${msg.score.toFixed(1)}${deltaStr}`;
+          // Beat own best AND global best.
+          const ownStr = ownDelta != null ? ` (${fmtDelta(ownDelta)} own)` : "";
+          const globalStr = globalDelta != null ? ` ${fmtDelta(globalDelta)} vs global` : "";
+          text = `<b>${msg.agent_name}</b> improved &mdash; ${msg.score.toFixed(1)}${ownStr} · NEW GLOBAL BEST${globalStr}`;
           eventType = "new_global_best";
+        } else if (beatsOwn) {
+          const ownStr = ownDelta != null ? ` (${fmtDelta(ownDelta)})` : "";
+          text = `<b>${msg.agent_name}</b> improvement &mdash; ${msg.score.toFixed(1)}${ownStr}`;
+          eventType = "experiment_success";
         } else {
-          text = `<b>${msg.agent_name}</b> no improvement &mdash; ${msg.score.toFixed(1)}${deltaStr}`;
+          // Show the regression vs own best when available so the magnitude
+          // of "no improvement" is visible (e.g. +0.42% = slightly worse).
+          const ownStr = ownDelta != null ? ` (${fmtDelta(ownDelta)} vs own)` : "";
+          text = `<b>${msg.agent_name}</b> no improvement &mdash; ${msg.score.toFixed(1)}${ownStr}`;
           eventType = "experiment_fail";
         }
         break;

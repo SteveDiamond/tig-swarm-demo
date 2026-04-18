@@ -129,7 +129,7 @@ async function loadInitialState(apiUrl: string) {
         type: "new_global_best",
         experiment_id: state.best_experiment_id || "",
         agent_name: replay[replay.length - 1]?.agent_name || "swarm",
-        agent_id: "",
+        agent_id: replay[replay.length - 1]?.agent_id || "",
         score: state.best_score,
         improvement_pct: state.improvement_pct || 0,
         // Derived from /api/replay above. Null only when the current best
