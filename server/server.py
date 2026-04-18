@@ -162,7 +162,10 @@ async def periodic_stats():
             async with db.connect() as conn:
                 best = await db.get_global_best(conn)
                 baseline = await get_baseline_score(conn)
-                active = await db.get_agent_count(conn, active_only=True)
+                cutoff_ts = inactive_cutoff()
+                active = await db.get_agent_count(
+                    conn, active_only=True, inactive_cutoff=cutoff_ts
+                )
                 total_agents = await db.get_agent_count(conn, active_only=False)
                 total_exp = (await (await conn.execute("SELECT COUNT(*) as c FROM experiments")).fetchone())["c"]
                 total_hyp = (await (await conn.execute("SELECT COUNT(*) as c FROM hypotheses")).fetchone())["c"]
@@ -275,7 +278,10 @@ async def get_state(agent_id: str | None = None):
     async with db.connect() as conn:
         global_best = await db.get_global_best(conn)
         baseline = await get_baseline_score(conn)
-        active = await db.get_agent_count(conn, active_only=True)
+        cutoff_ts = inactive_cutoff()
+        active = await db.get_agent_count(
+            conn, active_only=True, inactive_cutoff=cutoff_ts
+        )
         total_agents = await db.get_agent_count(conn, active_only=False)
         total_exp = (await (await conn.execute(
             "SELECT COUNT(*) as c FROM experiments"

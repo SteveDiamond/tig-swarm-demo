@@ -300,10 +300,17 @@ async def get_last_served_branch(
     return row["last_served_branch_id"] if row else None
 
 
-async def get_agent_count(conn: aiosqlite.Connection, active_only: bool = False) -> int:
+async def get_agent_count(
+    conn: aiosqlite.Connection,
+    active_only: bool = False,
+    inactive_cutoff: str | None = None,
+) -> int:
     if active_only:
+        if inactive_cutoff is None:
+            raise ValueError("inactive_cutoff is required when active_only=True")
         cursor = await conn.execute(
-            "SELECT COUNT(*) as c FROM agents WHERE status != 'offline'"
+            "SELECT COUNT(*) as c FROM agents WHERE last_heartbeat >= ?",
+            (inactive_cutoff,),
         )
     else:
         cursor = await conn.execute("SELECT COUNT(*) as c FROM agents")
