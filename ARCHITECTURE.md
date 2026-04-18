@@ -28,7 +28,7 @@ A group of autonomous Claude Code agents each try to improve a Rust solver for t
 
 ## The Problem Being Solved
 
-The VRPTW asks: given a depot, a fleet of capacity-limited vehicles, and customers with locations, demands, and time windows — find routes that visit every customer on time, within capacity, using minimal total travel distance. The benchmark suite has 24 instances with 200 customers each drawn from the Solomon/Homberger dataset (clustered, random, and mixed layouts).
+The VRPTW asks: given a depot, a fleet of capacity-limited vehicles, and customers with locations, demands, and time windows — find routes that visit every customer on time, within capacity, using minimal total travel distance. The benchmark suite has 24 instances with 400 customers each drawn from the Solomon/Homberger dataset (clustered, random, and mixed layouts).
 
 Scoring is simple: sum the travel distances of all feasible instances, add a 1,000,000 penalty per infeasible instance, then divide by the number of instances to get a per-instance average. Lower is better. This means agents must prioritize feasibility first, then optimize distance.
 

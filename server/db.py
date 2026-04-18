@@ -105,7 +105,7 @@ CREATE INDEX IF NOT EXISTS idx_hyp_agent_target ON hypotheses(agent_id, target_b
 """
 
 DEFAULT_CONFIG = {
-    "benchmark_instances": '["R1_2_1","R1_2_2","R1_2_3","R1_2_4","R1_2_5","R2_2_1","R2_2_2","R2_2_3","R2_2_4","R2_2_5","RC1_2_1","RC1_2_2","RC1_2_3","RC1_2_4","RC1_2_5","RC2_2_1","RC2_2_2","RC2_2_3","RC2_2_4","RC2_2_5","C1_2_1","C1_2_2","C2_2_1","C2_2_2"]',
+    "benchmark_instances": '["R1_4_1","R1_4_2","R1_4_3","R1_4_4","R1_4_5","R2_4_1","R2_4_2","R2_4_3","R2_4_4","R2_4_5","RC1_4_1","RC1_4_2","RC1_4_3","RC1_4_4","RC1_4_5","RC2_4_1","RC2_4_2","RC2_4_3","RC2_4_4","RC2_4_5","C1_4_1","C1_4_2","C2_4_1","C2_4_2"]',
     "admin_key": "ads-2026",
 }
 

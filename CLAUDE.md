@@ -116,7 +116,7 @@ BENCH=$(python3 scripts/benchmark.py 2>/dev/null)
 echo "$BENCH" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'Score: {d[\"score\"]}, Feasible: {d[\"feasible\"]}, Vehicles: {d[\"num_vehicles\"]}')"
 ```
 
-This builds, runs the solver on 24 benchmark instances (200 nodes each, HG dataset — R1, R2, RC1, RC2, C1, C2), evaluates feasibility, and outputs JSON. **Save the output in `$BENCH`** — you will reuse it in Step 5.
+This builds, runs the solver on 24 benchmark instances (400 nodes each, HG dataset — R1, R2, RC1, RC2, C1, C2), evaluates feasibility, and outputs JSON. **Save the output in `$BENCH`** — you will reuse it in Step 5.
 
 **Time limit: 30 seconds per instance.** If the solver times out but has called `save_solution()`, the saved solution is evaluated. If no solution was saved, the instance counts as infeasible. Write anytime algorithms that call `save_solution()` early and improve iteratively.
 

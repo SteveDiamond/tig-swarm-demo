@@ -270,7 +270,7 @@ function randomBetween(min: number, max: number): number {
 function generateMockRoutes(): AllRouteData {
   const instances: AllRouteData = {};
   for (let i = 1; i <= 8; i++) {
-    instances[`RC1_2_${i}.txt`] = generateMockInstance();
+    instances[`RC1_4_${i}.txt`] = generateMockInstance();
   }
   return instances;
 }

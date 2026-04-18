@@ -91,7 +91,7 @@ export class RoutesPanel implements Panel {
           <div class="routes-score-label">SCORE</div>
           <div class="routes-score-value" id="routes-score">---</div>
           <div class="routes-score-delta" id="routes-score-delta"></div>
-          <div class="routes-score-bks" id="routes-score-bks" title="Gap vs average literature Best Known Solution across the 24 HG_200 instances (avg ${BKS_AVERAGE.toFixed(2)})"></div>
+          <div class="routes-score-bks" id="routes-score-bks" title="Gap vs average literature Best Known Solution across the 24 HG_400 instances (avg ${BKS_AVERAGE.toFixed(2)})"></div>
         </div>
       </div>
     `;
