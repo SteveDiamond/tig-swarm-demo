@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Swarm Dashboard — Automated Discovery</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <canvas id="particleCanvas"></canvas>
+    <div class="dashboard">
+      <div class="panel-stats" id="panel-stats"></div>
+      <div class="panel-routes" id="panel-routes"></div>
+      <div class="panel-chart" id="panel-chart"></div>
+      <div class="panel-diversity" id="panel-diversity"></div>
+      <div class="panel-feed" id="panel-feed"></div>
+      <div class="panel-leaderboard" id="panel-leaderboard"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
